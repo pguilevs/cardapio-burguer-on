@@ -438,7 +438,7 @@ export const PRODUCTS = [
     price: 14.99,
     description: "Massa branca fofinha e molhada, recheio farto de beijinho de coco com uvas passas brancas especiais.",
     badge: "Artesanal Especial 🥥",
-    image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/bolo-pote-beijinho.webp",
     allowExtras: false
   },
   {
@@ -448,7 +448,7 @@ export const PRODUCTS = [
     price: 14.99,
     description: "Massa de chocolate 50% cacau super molhadinha, intercalada com brigadeiro gourmet cremoso e granulados nobres.",
     badge: "O Queridinho 🍫",
-    image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/bolo-pote-brigadeiro.webp",
     allowExtras: false
   },
   {
@@ -458,7 +458,7 @@ export const PRODUCTS = [
     price: 14.99,
     description: "A clássica e amada combinação do bolo de chocolate artesanal úmido com recheio cremoso de coco fresco.",
     badge: "Chocolate & Coco 🥥",
-    image: "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/bolo-pote-prestigio.webp",
     allowExtras: false
   }
 ];
