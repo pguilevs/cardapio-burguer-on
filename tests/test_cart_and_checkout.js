@@ -41,7 +41,8 @@ console.log("=== INICIANDO TESTES DO CARDÁPIO BURGUER ON ===\n");
 
 // 1. Teste de Dados do Cardápio
 assert(STORE_CONFIG.whatsappNumber === "5511913219550", "Número do WhatsApp configurado corretamente");
-assert(STORE_CONFIG.address.includes("Rua Luiz Correia, 91"), "Endereço da loja confere");
+assert(STORE_CONFIG.address.includes("Rua Luiz Correia, 44"), "Endereço da loja confere (nº 44)");
+assert(STORE_CONFIG.openingHoursDisplay.includes("11:00 às 14:00"), "Horário de almoço configurado");
 assert(CATEGORIES.length === 6, "Total de 6 categorias cadastradas");
 assert(EXTRA_ITEMS.length === 6, "Total de 6 adicionais cadastrados");
 

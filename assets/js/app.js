@@ -3,7 +3,7 @@
  * Controlador Principal da Aplicação SPA
  */
 
-import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012g";
+import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012h";
 import {
   initCart,
   subscribeToCart,
@@ -113,16 +113,26 @@ function initStoreStatus() {
   if (STORE_CONFIG.manualStatus !== null) {
     isOpen = Boolean(STORE_CONFIG.manualStatus);
   } else {
-    // Horário: Quarta a Domingo das 18h às 23h30
+    // Horários de Funcionamento:
+    // 1. Almoço: Segunda a Sábado das 11:00 às 14:00 (dias 1 a 6)
+    // 2. Jantar/Noite: Quarta a Domingo das 18:00 às 23:30 (dias 0, 3, 4, 5, 6)
     const now = new Date();
-    const day = now.getDay(); // 0 = Dom, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb
+    const day = now.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb
     const hour = now.getHours();
     const minute = now.getMinutes();
     const totalMinutes = hour * 60 + minute;
 
-    const isDayOpen = day === 0 || (day >= 3 && day <= 6);
-    const isHourOpen = totalMinutes >= 18 * 60 && totalMinutes <= 23 * 60 + 30;
-    isOpen = isDayOpen && isHourOpen;
+    // Almoço: Segunda a Sábado das 11h às 14h
+    const isLunchDay = day >= 1 && day <= 6;
+    const isLunchHour = totalMinutes >= 11 * 60 && totalMinutes <= 14 * 60;
+    const isLunchOpen = isLunchDay && isLunchHour;
+
+    // Jantar/Noite: Quarta a Domingo das 18h às 23h30
+    const isDinnerDay = day === 0 || (day >= 3 && day <= 6);
+    const isDinnerHour = totalMinutes >= 18 * 60 && totalMinutes <= 23 * 60 + 30;
+    const isDinnerOpen = isDinnerDay && isDinnerHour;
+
+    isOpen = isLunchOpen || isDinnerOpen;
   }
 
   if (isOpen) {

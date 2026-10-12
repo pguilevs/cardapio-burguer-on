@@ -8,8 +8,8 @@ export const STORE_CONFIG = {
   tagline: "Hambúrgueres artesanais feitos na brasa com paixão e sabor incomparável",
   phoneDisplay: "(11) 91321-9550",
   whatsappNumber: "5511913219550",
-  address: "Rua Luiz Correia, 91 - Moinho Velho, Cotia - SP",
-  openingHoursDisplay: "Quarta a Domingo das 18:00 às 23:30",
+  address: "Rua Luiz Correia, 44 - Moinho Velho, Cotia - SP",
+  openingHoursDisplay: "Seg a Sáb 11:00 às 14:00 | Qua a Dom 18:00 às 23:30",
   estimateDeliveryTime: "35-50 min",
   estimatePickupTime: "20-30 min",
   // Controle de status: 'auto' (baseado em horário) ou boolean fixo (true = aberto, false = fechado)

@@ -22,7 +22,7 @@ Aplicação web completa (Single Page Application - SPA) de Cardápio Digital In
   - Controle de quantidades e remoção de itens.
   - **Modalidade de Entrega:**
     - 🛵 **Delivery:** Coleta de nome, telefone com máscara e endereço completo.
-    - 🏬 **Retirada no Local:** Informa o endereço fixo da loja (*Rua Luiz Correia, 91 - Moinho Velho, Cotia*) dispensando endereço do cliente.
+    - 🏬 **Retirada no Local:** Informa o endereço fixo da loja (*Rua Luiz Correia, 44 - Moinho Velho, Cotia*) dispensando endereço do cliente.
   - **Formas de Pagamento:** Pix (com aviso de comprovante), Cartão (maquininha na entrega/retirada) e Dinheiro (com campo opcional de troco).
 - **🚀 Integração Direta com WhatsApp:**
   - Formatação impecável da mensagem com emojis, lista de itens, adicionais, observações e totais.
