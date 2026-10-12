@@ -3,7 +3,7 @@
  * Controlador Principal da Aplicação SPA
  */
 
-import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js";
+import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012b";
 import {
   initCart,
   subscribeToCart,
@@ -334,7 +334,7 @@ function createProductCard(product, isLele = false) {
           alt="${product.name}"
           loading="lazy"
           class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-          onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=300&q=80';"
+          onerror="this.onerror=null; this.src='./assets/images/x-tudo.webp';"
         />
       </div>
     </div>
@@ -381,6 +381,10 @@ function openProductModal(product) {
   dom.modalProductPrice.textContent = formatBRL(product.price);
   dom.modalProductImg.src = product.image;
   dom.modalProductImg.alt = product.name;
+  dom.modalProductImg.onerror = function() {
+    this.onerror = null;
+    this.src = './assets/images/x-tudo.webp';
+  };
   dom.modalObsInput.value = "";
   dom.modalQtyValue.textContent = "1";
 

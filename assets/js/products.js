@@ -78,7 +78,7 @@ export const PRODUCTS = [
     price: 44.99,
     description: "1 carne artesanal, 1 hambúrguer empanado, ovo, calabresa, 2 cebolas empanadas, tomate, alface e maionese da casa.",
     badge: "O Mais Pedido ⭐",
-    image: "./assets/images/x-tudo.png",
+    image: "./assets/images/x-tudo.webp",
     allowExtras: true
   },
   {
@@ -88,7 +88,7 @@ export const PRODUCTS = [
     price: 19.99,
     description: "1 carne artesanal, queijo prato, tomate, alface fresca e maionese especial da casa.",
     badge: "Clássico",
-    image: "./assets/images/x-salada.png",
+    image: "./assets/images/x-salada.webp",
     allowExtras: true
   },
   {
@@ -98,7 +98,7 @@ export const PRODUCTS = [
     price: 24.99,
     description: "1 carne artesanal, cheddar cremoso, fatias crocantes de bacon e maionese da casa.",
     badge: "Favorito 🔥",
-    image: "./assets/images/burguer-bacon.png",
+    image: "./assets/images/burguer-bacon.webp",
     allowExtras: true
   },
   {
@@ -108,7 +108,7 @@ export const PRODUCTS = [
     price: 29.99,
     description: "2 carnes artesanais suculentas, dobro de cheddar, fatias crocantes de bacon e maionese da casa.",
     badge: "Duplo Sabor",
-    image: "./assets/images/duplo-bacon.png",
+    image: "./assets/images/duplo-bacon.webp",
     allowExtras: true
   },
   {
@@ -118,7 +118,7 @@ export const PRODUCTS = [
     price: 34.99,
     description: "3 carnes artesanais, tomate, alface crocante e muita maionese especial da casa.",
     badge: "Tamanho Família",
-    image: "./assets/images/big-especial.png",
+    image: "./assets/images/big-especial.webp",
     allowExtras: true
   },
   {
@@ -128,7 +128,7 @@ export const PRODUCTS = [
     price: 27.99,
     description: "1 carne artesanal, queijo prato derretido, 2 cebolas empanadas crocantes e maionese da casa.",
     badge: "Crocante",
-    image: "./assets/images/onion-burguer.png",
+    image: "./assets/images/onion-burguer.webp",
     allowExtras: true
   },
   {
@@ -138,7 +138,7 @@ export const PRODUCTS = [
     price: 24.99,
     description: "1 carne artesanal, fatias douradas de calabresa, tomate fresco, alface e maionese da casa.",
     badge: null,
-    image: "./assets/images/calabresa.png",
+    image: "./assets/images/calabresa.webp",
     allowExtras: true
   },
   {
@@ -148,7 +148,7 @@ export const PRODUCTS = [
     price: 24.99,
     description: "1 carne artesanal, piscina de cheddar cremoso derretido, cebola caramelizada e maionese da casa.",
     badge: "Cheddar & Cebola",
-    image: "./assets/images/melt.png",
+    image: "./assets/images/melt.webp",
     allowExtras: true
   },
 
@@ -160,7 +160,7 @@ export const PRODUCTS = [
     price: 59.99,
     description: "2 X-Salada artesanais + porção de cebola empanada crocante + batata com cheddar e bacon + Refrigerante Dolly 2L bem gelado.",
     badge: "Ideal para Dois 💑",
-    image: "./assets/images/combo-especial.png",
+    image: "./assets/images/combo-especial.webp",
     allowExtras: true
   },
   {
@@ -170,7 +170,7 @@ export const PRODUCTS = [
     price: 99.99,
     description: "4 X-Salada artesanais + porção de cebola empanada crocante + batata com cheddar e bacon + Refrigerante Dolly 2L.",
     badge: "Super Família 👨‍👩‍👧‍👦",
-    image: "./assets/images/combo-especial.png",
+    image: "./assets/images/combo-especial.webp",
     allowExtras: true
   },
   {
@@ -180,7 +180,7 @@ export const PRODUCTS = [
     price: 74.99,
     description: "2 Burguer Bacon + batata com cheddar e bacon + porção de cebola empanada + Refrigerante Dolly 2L.",
     badge: "Explosão de Bacon 🥓",
-    image: "./assets/images/combo-especial.png",
+    image: "./assets/images/combo-especial.webp",
     allowExtras: true
   },
   {
@@ -190,7 +190,7 @@ export const PRODUCTS = [
     price: 74.99,
     description: "2 Burguers Onion + batata com cheddar e bacon + porção de cebola empanada + Refrigerante Dolly 2L.",
     badge: "Mega Onion 🧅",
-    image: "./assets/images/combo-especial.png",
+    image: "./assets/images/combo-especial.webp",
     allowExtras: true
   },
 
@@ -202,7 +202,7 @@ export const PRODUCTS = [
     price: 39.99,
     description: "1 X-Salada artesanal + Batata Frita crocante individual + 1 Sukita Lata 350ml gelada.",
     badge: "Individual Completo",
-    image: "./assets/images/x-salada.png",
+    image: "./assets/images/x-salada.webp",
     allowExtras: true
   },
   {
@@ -212,7 +212,7 @@ export const PRODUCTS = [
     price: 39.99,
     description: "1 Burguer Bacon artesanal + Batata Frita crocante individual + 1 Sukita Lata 350ml gelada.",
     badge: "Bacon Lovers",
-    image: "./assets/images/burguer-bacon.png",
+    image: "./assets/images/burguer-bacon.webp",
     allowExtras: true
   },
   {
@@ -222,7 +222,7 @@ export const PRODUCTS = [
     price: 44.99,
     description: "1 Duplo Bacon artesanal com 2 carnes + Batata Frita crocante individual + 1 Sukita Lata 350ml gelada.",
     badge: "Carne em Dobro",
-    image: "./assets/images/duplo-bacon.png",
+    image: "./assets/images/duplo-bacon.webp",
     allowExtras: true
   },
   {
@@ -232,7 +232,7 @@ export const PRODUCTS = [
     price: 39.99,
     description: "1 Burguer Calabresa artesanal + Batata Frita crocante individual + 1 Sukita Lata 350ml gelada.",
     badge: null,
-    image: "./assets/images/calabresa.png",
+    image: "./assets/images/calabresa.webp",
     allowExtras: true
   },
   {
@@ -242,7 +242,7 @@ export const PRODUCTS = [
     price: 39.99,
     description: "1 Burguer Onion artesanal + Batata Frita crocante individual + 1 Sukita Lata 350ml gelada.",
     badge: null,
-    image: "./assets/images/onion-burguer.png",
+    image: "./assets/images/onion-burguer.webp",
     allowExtras: true
   },
 
@@ -254,7 +254,7 @@ export const PRODUCTS = [
     price: 19.99,
     description: "Porção generosa de batata palito selecionada, frita na hora, bem crocante e sequinha.",
     badge: "Crocante & Sequinha",
-    image: "./assets/images/porcoes.png",
+    image: "./assets/images/porcoes.webp",
     allowExtras: false
   },
   {
@@ -264,7 +264,7 @@ export const PRODUCTS = [
     price: 24.99,
     description: "Batata frita crocante coberta com generosa camada de queijo cheddar cremoso e bacon em cubos crocantes.",
     badge: "Mais Pedida 🍟",
-    image: "./assets/images/porcoes.png",
+    image: "./assets/images/porcoes.webp",
     allowExtras: false
   },
   {
@@ -274,7 +274,7 @@ export const PRODUCTS = [
     price: 24.99,
     description: "Anéis de cebola selecionados, empanados com tempero especial da casa, super crocantes e dourados.",
     badge: "Onion Rings",
-    image: "./assets/images/porcoes.png",
+    image: "./assets/images/porcoes.webp",
     allowExtras: false
   },
 
