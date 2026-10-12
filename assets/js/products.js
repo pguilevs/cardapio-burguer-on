@@ -5,7 +5,7 @@
 
 export const STORE_CONFIG = {
   name: "Burguer On Artesanal",
-  tagline: "Hambúrgueres artesanais feitos na brasa com paixão e sabor incomparável",
+  tagline: "Hambúrgueres artesanais feitos na chapa com paixão e sabor incomparável",
   phoneDisplay: "(11) 91321-9550",
   whatsappNumber: "5511913219550",
   address: "Rua Luiz Correia, 44 - Moinho Velho, Cotia - SP",
