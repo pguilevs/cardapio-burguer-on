@@ -56,7 +56,7 @@
   <!-- Estilos Customizados -->
   <link rel="stylesheet" href="./assets/css/styles.css" />
   <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍔</text></svg>">
+  <link rel="icon" type="image/png" href="./assets/images/favicon.png" />
 </head>
 
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-zinc-950">
@@ -68,9 +68,13 @@
     <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
       
       <!-- Logo e Identidade -->
-      <a href="#" class="flex items-center gap-2.5 group">
-        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
-          <span class="text-xl sm:text-2xl">🍔</span>
+      <a href="#" class="flex items-center gap-2.5 sm:gap-3 group">
+        <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border border-amber-500/40 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform bg-black flex-shrink-0">
+          <img
+            src="./assets/images/logo-burguer-on.webp"
+            alt="Burguer On Artesanal"
+            class="w-full h-full object-cover"
+          />
         </div>
         <div>
           <h1 class="font-display font-extrabold text-base sm:text-xl tracking-tight text-white flex items-center gap-1.5 leading-none">
@@ -402,8 +406,8 @@
             </div>
 
             <!-- Estado Vazio -->
-            <div id="cart-empty-state" class="text-center py-12 px-4 bg-zinc-950/50 rounded-2xl border border-zinc-800">
-              <span class="text-4xl block mb-2">🍔</span>
+            <div id="cart-empty-state" class="text-center py-10 px-4 bg-zinc-950/50 rounded-2xl border border-zinc-800 flex flex-col items-center">
+              <img src="./assets/images/logo-burguer-on.webp" alt="Burguer On" class="w-16 h-16 rounded-2xl object-cover border border-amber-500/30 opacity-80 mb-3" />
               <p class="text-sm font-bold text-zinc-300">Sua sacola está vazia</p>
               <p class="text-xs text-zinc-500 mt-1">Nenhum item adicionado ainda. Escolha no cardápio para pedir!</p>
             </div>
@@ -598,9 +602,16 @@
        ========================================================================= -->
   <footer class="mt-auto border-t border-zinc-800 bg-zinc-950 py-8 px-4 sm:px-6">
     <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs text-zinc-500">
-      <div>
-        <p class="font-bold text-zinc-300">Burguer On Artesanal & Lele Bolos no Pote</p>
-        <p class="mt-0.5">Rua Luiz Correia, 44 - Moinho Velho, Cotia - SP</p>
+      <div class="flex items-center gap-3">
+        <img
+          src="./assets/images/logo-burguer-on.webp"
+          alt="Burguer On Artesanal"
+          class="w-10 h-10 rounded-xl object-cover border border-amber-500/30 flex-shrink-0"
+        />
+        <div>
+          <p class="font-bold text-zinc-300">Burguer On Artesanal & Lele Bolos no Pote</p>
+          <p class="mt-0.5">Rua Luiz Correia, 44 - Moinho Velho, Cotia - SP</p>
+        </div>
       </div>
       <div>
         <p>WhatsApp Oficial: <a href="https://wa.me/5511913219550" target="_blank" class="text-amber-400 hover:underline font-semibold">(11) 91321-9550</a></p>
@@ -615,7 +626,7 @@
   <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none p-2"></div>
 
   <!-- Scripts Modulares -->
-  <script type="module" src="./assets/js/app.js?v=20261012h"></script>
+  <script type="module" src="./assets/js/app.js?v=20261012i"></script>
 
 </body>
 </html>

@@ -3,7 +3,7 @@
  * Controlador Principal da Aplicação SPA
  */
 
-import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012h";
+import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012i";
 import {
   initCart,
   subscribeToCart,
