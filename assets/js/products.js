@@ -286,7 +286,7 @@ export const PRODUCTS = [
     price: 6.99,
     description: "Lata 350ml bem gelada.",
     badge: null,
-    image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/coca-cola-lata-350ml.webp",
     allowExtras: false
   },
   {
@@ -296,7 +296,7 @@ export const PRODUCTS = [
     price: 6.99,
     description: "Lata 350ml bem gelada.",
     badge: null,
-    image: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/fanta-uva-lata-350ml.webp",
     allowExtras: false
   },
   {
@@ -306,7 +306,7 @@ export const PRODUCTS = [
     price: 6.99,
     description: "Lata 350ml bem gelada.",
     badge: null,
-    image: "https://images.unsplash.com/photo-1624517452488-04869289c4ca?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/fanta-laranja-lata-350ml.webp",
     allowExtras: false
   },
   {
@@ -316,7 +316,7 @@ export const PRODUCTS = [
     price: 6.99,
     description: "Lata 350ml bem gelada.",
     badge: null,
-    image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/guarana-lata-350ml.webp",
     allowExtras: false
   },
   {
@@ -326,7 +326,7 @@ export const PRODUCTS = [
     price: 3.99,
     description: "Garrafinha pet 200ml geladinha.",
     badge: null,
-    image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/coca-cola-200ml.webp",
     allowExtras: false
   },
   {
@@ -336,7 +336,7 @@ export const PRODUCTS = [
     price: 3.99,
     description: "Garrafinha pet 350ml gelada.",
     badge: null,
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/dolly-350ml.webp",
     allowExtras: false
   },
   {
@@ -346,7 +346,7 @@ export const PRODUCTS = [
     price: 5.99,
     description: "Cerveja puro malte em lata 269ml trincando de gelada.",
     badge: "Alcoólica 🍺",
-    image: "https://images.unsplash.com/photo-1618886614638-80e3c103d31a?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/heineken.webp",
     allowExtras: false
   },
   {
@@ -356,7 +356,7 @@ export const PRODUCTS = [
     price: 4.99,
     description: "Cerveja puro malte lager 269ml gelada.",
     badge: "Alcoólica 🍺",
-    image: "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/amstel.webp",
     allowExtras: false
   },
   {
@@ -366,7 +366,7 @@ export const PRODUCTS = [
     price: 4.99,
     description: "Cerveja pilsen lata 350ml gelada.",
     badge: "Alcoólica 🍺",
-    image: "https://images.unsplash.com/photo-1535958636474-b021ee887b13?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/skol.webp",
     allowExtras: false
   },
   {
@@ -376,7 +376,7 @@ export const PRODUCTS = [
     price: 16.00,
     description: "Garrafa família 2 Litros bem gelada.",
     badge: "Tamanho Família",
-    image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/coca-cola-2l.webp",
     allowExtras: false
   },
   {
@@ -386,7 +386,7 @@ export const PRODUCTS = [
     price: 8.00,
     description: "Garrafa 2 Litros gelada (Guaraná).",
     badge: "Econômico",
-    image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/dolly-2l.webp",
     allowExtras: false
   },
 
