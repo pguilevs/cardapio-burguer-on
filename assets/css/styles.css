@@ -1,0 +1,197 @@
+/* ==========================================================================
+   Cardápio Digital Interativo - Burguer On Artesanal
+   Estilos Personalizados, Efeitos Visuais & Tema Dark Mode Premium
+   ========================================================================== */
+
+:root {
+  --color-bg-base: #121212;
+  --color-bg-surface: #18181b;
+  --color-bg-elevated: #27272a;
+  --color-primary: #f97316;
+  --color-primary-hover: #ea580c;
+  --color-gold: #f59e0b;
+  --color-text-main: #f4f4f5;
+  --color-text-muted: #a1a1aa;
+  --color-border: #27272a;
+  --color-lele-pink: #f43f5e;
+  --color-lele-bg: rgba(244, 63, 94, 0.08);
+  --color-lele-border: rgba(244, 63, 94, 0.25);
+}
+
+/* Rolagem Suave Global */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-main);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* Ocultar barra de rolagem onde desejado (como chips de categorias) mantendo rolagem */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Barra de rolagem estilizada para desktop */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f97316;
+}
+
+/* Efeito Glassmorphism com fallback */
+.glass-header {
+  background-color: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-modal {
+  background-color: rgba(24, 24, 27, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Animações de Entrada e Feedback */
+@keyframes slideUpDrawer {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes badgePop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(249, 115, 22, 0.65);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpDrawer 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeInBackdrop 0.25s ease-out forwards;
+}
+
+.animate-badge-pop {
+  animation: badgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.glow-primary {
+  animation: pulseGlow 3s infinite;
+}
+
+/* Efeito de Card Hover & Transições */
+.product-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(249, 115, 22, 0.4);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.65), 0 0 15px rgba(249, 115, 22, 0.15);
+}
+
+/* ==========================================================================
+   TEMA EXCLUSIVO: LELE BOLOS NO POTE (Sobremesas)
+   Toque aconchegante, rosé e artesanal mantendo harmonia com o dark mode
+   ========================================================================== */
+.lele-category-header {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.15) 0%, rgba(251, 113, 133, 0.05) 100%);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.lele-category-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #f43f5e, #fb7185, #fda4af);
+}
+
+.lele-card {
+  border: 1px solid rgba(244, 63, 94, 0.18) !important;
+  background: linear-gradient(180deg, #18181b 0%, rgba(35, 20, 27, 0.95) 100%) !important;
+}
+
+.lele-card:hover {
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.65), 0 0 15px rgba(244, 63, 94, 0.2) !important;
+}
+
+.lele-badge {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.4);
+}
+
+.lele-text-gradient {
+  background: linear-gradient(90deg, #fb7185, #fda4af);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Indicador de Status da Loja */
+.status-dot-open {
+  background-color: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+}
+
+.status-dot-closed {
+  background-color: #ef4444;
+  box-shadow: 0 0 10px #ef4444;
+}
+
+/* Checkboxes customizados para Adicionais */
+.custom-checkbox:checked {
+  background-color: #f97316;
+  border-color: #f97316;
+}
+
+/* Espaçamento Seguro no Mobile para a Barra Inferior */
+.safe-bottom-space {
+  padding-bottom: 90px;
+}

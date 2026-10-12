@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="description" content="Cardápio Digital Interativo da hamburgueria Burguer On Artesanal. Peça lanches artesanais, combos especiais, porções, bebidas e as deliciosas sobremesas da Lele Bolos no Pote direto pelo WhatsApp." />
+  <title>Burguer On Artesanal | Cardápio Digital & Pedidos</title>
+
+  <!-- Open Graph / Redes Sociais -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Burguer On Artesanal | Cardápio Digital" />
+  <meta property="og:description" content="Hambúrgueres artesanais feitos na brasa. Monte seu pedido e envie direto para nosso WhatsApp!" />
+  <meta property="og:image" content="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80" />
+
+  <!-- Fontes do Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Outfit"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              200: '#fed7aa',
+              300: '#fdba74',
+              400: '#fb923c',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+              800: '#9a3412',
+              900: '#7c2d12',
+            },
+            lele: {
+              pink: '#f43f5e',
+              rose: '#fb7185',
+              light: '#fda4af',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Estilos Customizados -->
+  <link rel="stylesheet" href="./assets/css/styles.css" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍔</text></svg>">
+</head>
+
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-zinc-950">
+
+  <!-- =========================================================================
+       HEADER FIXO (STICKY HEADER) COM IDENTIDADE E STATUS
+       ========================================================================= -->
+  <header class="sticky top-0 z-40 glass-header transition-all duration-300">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+      
+      <!-- Logo e Identidade -->
+      <a href="#" class="flex items-center gap-2.5 group">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
+          <span class="text-xl sm:text-2xl">🍔</span>
+        </div>
+        <div>
+          <h1 class="font-display font-extrabold text-base sm:text-xl tracking-tight text-white flex items-center gap-1.5 leading-none">
+            Burguer On <span class="text-amber-500 font-semibold text-xs sm:text-sm px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20">ARTESANAL</span>
+          </h1>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span id="store-status-dot" class="w-2 h-2 rounded-full status-dot-open"></span>
+            <span id="store-status-text" class="text-[11px] font-medium text-emerald-400">Aberto Agora</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Botão do Carrinho no Topo -->
+      <div class="flex items-center gap-2">
+        <button
+          id="open-cart-btn"
+          type="button"
+          class="relative flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700/60 text-zinc-100 transition-all active:scale-95 shadow-md"
+          aria-label="Abrir sacola de compras"
+        >
+          <div class="relative">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+            </svg>
+            <span
+              id="header-cart-badge"
+              class="hidden absolute -top-2 -right-2 bg-amber-500 text-zinc-950 text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-sm"
+            >
+              <span id="header-cart-count">0</span>
+            </span>
+          </div>
+          <span class="text-xs font-bold hidden sm:inline text-zinc-200">Sacola</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       HERO / INFORMAÇÕES DO ESTABELECIMENTO & BUSCA
+       ========================================================================= -->
+  <section class="relative bg-gradient-to-b from-zinc-900/90 to-zinc-950 border-b border-zinc-800/80 pt-6 pb-6">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+      
+      <!-- Card Informativo Principal -->
+      <div class="relative overflow-hidden rounded-3xl p-5 sm:p-7 bg-zinc-900/80 border border-zinc-800 shadow-2xl flex flex-col md:flex-row gap-5 items-center justify-between">
+        
+        <div class="flex-1 text-center md:text-left">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold mb-2.5">
+            <span>🔥</span> Feito na brasa com carnes artesanais selecionadas
+          </div>
+          <h2 class="font-display text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+            Sabor de verdade, entregue quentinho na sua porta.
+          </h2>
+          <p class="text-xs sm:text-sm text-zinc-400 mt-2 max-w-xl">
+            Escolha seus itens favoritos, personalize os adicionais e envie seu pedido completo para nosso WhatsApp em segundos.
+          </p>
+
+          <!-- Badges de Informações -->
+          <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3 mt-4 text-xs text-zinc-300">
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800/90 border border-zinc-700/60 font-medium">
+              <span>📍</span> Rua Luiz Correia, 91 - Moinho Velho, Cotia
+            </span>
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800/90 border border-zinc-700/60 font-medium">
+              <span>⏱️</span> 35-50 min
+            </span>
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800/90 border border-zinc-700/60 font-medium">
+              <span>💳</span> Pix, Cartão e Dinheiro
+            </span>
+          </div>
+        </div>
+
+        <!-- Destaque Ilustrativo / Banner -->
+        <div class="w-full md:w-56 h-36 md:h-44 rounded-2xl overflow-hidden relative shadow-xl border border-zinc-700/50 flex-shrink-0">
+          <img
+            src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80"
+            alt="Hambúrguer Artesanal Burguer On"
+            class="w-full h-full object-cover object-center"
+            loading="eager"
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent flex items-end p-3">
+            <span class="text-[11px] font-bold text-amber-400 bg-zinc-900/90 px-2 py-1 rounded-md border border-amber-500/30">
+              100% Artesanal 🍔
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Barra de Pesquisa Rápida -->
+      <div class="mt-5 relative">
+        <div class="relative flex items-center">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Buscar por lanche, combo, porção, bebida ou bolo de pote..."
+            class="w-full pl-10 pr-10 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all shadow-inner"
+          />
+          <button
+            id="clear-search-btn"
+            type="button"
+            class="hidden absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-200"
+            title="Limpar pesquisa"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       NAVEGAÇÃO POR CATEGORIAS (STICKY TABS / CHIPS)
+       ========================================================================= -->
+  <nav class="sticky top-16 sm:top-20 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 py-3 shadow-md">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+      <div
+        id="categories-nav"
+        class="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1"
+        role="tablist"
+        aria-label="Categorias do cardápio"
+      >
+        <!-- Os botões de categorias são injetados dinamicamente via app.js -->
+      </div>
+    </div>
+  </nav>
+
+  <!-- =========================================================================
+       FEED DE PRODUTOS PRINCIPAL
+       ========================================================================= -->
+  <main class="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-6 w-full safe-bottom-space">
+    <div id="products-container">
+      <!-- Cards e seções injetados dinamicamente via app.js -->
+    </div>
+  </main>
+
+  <!-- =========================================================================
+       BARRA FLUTUANTE INFERIOR MOBILE (STICKY BOTTOM BAR)
+       ========================================================================= -->
+  <aside
+    id="floating-cart-bar"
+    class="hidden fixed bottom-4 left-4 right-4 z-30 max-w-lg mx-auto sm:hidden animate-slide-up"
+    aria-label="Visualizar sacola"
+  >
+    <button
+      type="button"
+      class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 font-extrabold p-4 rounded-2xl shadow-2xl flex items-center justify-between transition-all active:scale-[0.98] glow-primary"
+    >
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-xl bg-zinc-950/20 flex items-center justify-center text-zinc-950 text-sm font-black">
+          🛒
+        </span>
+        <div class="text-left leading-tight">
+          <div class="text-xs uppercase tracking-wider opacity-80">Ver Sacola</div>
+          <div id="floating-cart-qty" class="text-xs font-semibold">0 itens</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="floating-cart-total" class="text-base font-black tracking-tight">R$ 0,00</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </div>
+    </button>
+  </aside>
+
+  <!-- =========================================================================
+       MODAL DE DETALHES DO PRODUTO (BOTTOM SHEET MOBILE / MODAL DESKTOP)
+       ========================================================================= -->
+  <div id="product-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" role="dialog" aria-modal="true">
+    
+    <!-- Backdrop / Fundo Escuro -->
+    <div id="product-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"></div>
+
+    <!-- Conteúdo do Modal -->
+    <div
+      id="product-modal-content"
+      class="relative w-full max-w-lg max-h-[90vh] bg-zinc-900 rounded-t-3xl sm:rounded-3xl border border-zinc-700/80 shadow-2xl flex flex-col overflow-hidden z-10 animate-slide-up"
+    >
+      <!-- Botão Fechar -->
+      <button
+        id="modal-close-btn"
+        type="button"
+        class="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-zinc-950/70 hover:bg-zinc-950 text-zinc-300 flex items-center justify-center transition-colors"
+        aria-label="Fechar detalhes do produto"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+
+      <!-- Imagem de Destaque -->
+      <div class="relative h-48 sm:h-56 w-full bg-zinc-950 overflow-hidden flex-shrink-0">
+        <img
+          id="modal-product-img"
+          src=""
+          alt=""
+          class="w-full h-full object-cover object-center"
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-black/30"></div>
+        <div class="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+          <span id="modal-product-badge" class="hidden text-xs font-bold px-2.5 py-0.5 rounded-full"></span>
+        </div>
+      </div>
+
+      <!-- Corpo com Rolagem -->
+      <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+        <div>
+          <div class="flex items-start justify-between gap-3">
+            <h3 id="modal-product-name" class="text-xl sm:text-2xl font-black text-white tracking-tight"></h3>
+            <span id="modal-product-price" class="text-lg sm:text-xl font-extrabold text-amber-400 whitespace-nowrap"></span>
+          </div>
+          <p id="modal-product-desc" class="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed"></p>
+        </div>
+
+        <!-- Seção de Adicionais -->
+        <div id="modal-extras-section" class="pt-2 border-t border-zinc-800">
+          <div class="flex items-center justify-between mb-2.5">
+            <h4 class="text-xs sm:text-sm font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+              <span>🥓</span> Adicionais Especiais
+            </h4>
+            <span class="text-[11px] text-zinc-500">Opcional</span>
+          </div>
+          <div id="modal-extras-list" class="space-y-2">
+            <!-- Checkboxes de adicionais inseridos via app.js -->
+          </div>
+        </div>
+
+        <!-- Campo de Observações -->
+        <div class="pt-2 border-t border-zinc-800">
+          <label for="modal-obs-input" class="block text-xs sm:text-sm font-bold text-zinc-200 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <span>📝</span> Alguma Observação?
+          </label>
+          <textarea
+            id="modal-obs-input"
+            rows="2"
+            maxlength="150"
+            placeholder="Ex: Sem maionese, sem cebola, ponto da carne bem passado..."
+            class="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Rodapé Fixo do Modal -->
+      <div class="p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800 flex items-center gap-3">
+        <!-- Contador de Quantidade -->
+        <div class="flex items-center bg-zinc-800/80 rounded-xl p-1 border border-zinc-700">
+          <button
+            id="modal-qty-minus"
+            type="button"
+            class="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-700 font-extrabold text-base transition-colors"
+          >-</button>
+          <span id="modal-qty-value" class="w-8 text-center text-sm font-bold text-white">1</span>
+          <button
+            id="modal-qty-plus"
+            type="button"
+            class="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-700 font-extrabold text-base transition-colors"
+          >+</button>
+        </div>
+
+        <!-- Botão Adicionar -->
+        <button
+          id="modal-add-btn"
+          type="button"
+          class="flex-1 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-black py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-between text-xs sm:text-sm"
+        >
+          <span>Adicionar ao Pedido</span>
+          <span id="modal-add-price" class="text-sm sm:text-base font-extrabold">R$ 0,00</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       DRAWER / MODAL LATERAL DE CARRINHO & CHECKOUT
+       ========================================================================= -->
+  <div id="cart-drawer" class="hidden fixed inset-0 z-50 overflow-hidden animate-fade-in" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div id="cart-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"></div>
+
+    <div class="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+      <div
+        id="cart-drawer-content"
+        class="w-screen max-w-md bg-zinc-900 border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden animate-slide-up sm:animate-none"
+      >
+        
+        <!-- Topo do Carrinho -->
+        <div class="p-4 sm:p-5 border-b border-zinc-800 bg-zinc-950/80 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🛍️</span>
+            <div>
+              <h3 class="font-display font-extrabold text-base sm:text-lg text-white">Sua Sacola de Pedidos</h3>
+              <p class="text-[11px] text-zinc-400">Burguer On Artesanal</p>
+            </div>
+          </div>
+          <button
+            id="close-cart-btn"
+            type="button"
+            class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            aria-label="Fechar sacola"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Corpo com Rolagem -->
+        <div class="p-4 sm:p-5 overflow-y-auto flex-1 space-y-6">
+          
+          <!-- Lista dos Itens -->
+          <div>
+            <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Itens Escolhidos</h4>
+            
+            <div id="cart-items-list" class="space-y-3">
+              <!-- Itens injetados via app.js -->
+            </div>
+
+            <!-- Estado Vazio -->
+            <div id="cart-empty-state" class="text-center py-12 px-4 bg-zinc-950/50 rounded-2xl border border-zinc-800">
+              <span class="text-4xl block mb-2">🍔</span>
+              <p class="text-sm font-bold text-zinc-300">Sua sacola está vazia</p>
+              <p class="text-xs text-zinc-500 mt-1">Nenhum item adicionado ainda. Escolha no cardápio para pedir!</p>
+            </div>
+          </div>
+
+          <!-- Tabs de Tipo de Entrega -->
+          <div class="pt-4 border-t border-zinc-800">
+            <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2.5">Como deseja receber?</h4>
+            <div class="grid grid-cols-2 gap-2 p-1 bg-zinc-950 rounded-2xl border border-zinc-800">
+              <button
+                id="type-delivery"
+                type="button"
+                class="py-2.5 px-3 rounded-xl text-xs font-bold transition-all bg-amber-500 text-zinc-950 flex items-center justify-center gap-1.5"
+              >
+                <span>🛵</span> Delivery
+              </button>
+              <button
+                id="type-pickup"
+                type="button"
+                class="py-2.5 px-3 rounded-xl text-xs font-semibold transition-all bg-zinc-800 text-zinc-300 hover:text-white flex items-center justify-center gap-1.5"
+              >
+                <span>🏬</span> Retirada
+              </button>
+            </div>
+
+            <!-- Card de Informação de Retirada -->
+            <div id="pickup-info-card" class="hidden mt-3 p-3.5 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-xs">
+              <div class="font-bold text-amber-400 mb-1 flex items-center gap-1.5">
+                <span>📍</span> Endereço para Retirada no Local:
+              </div>
+              <p class="text-zinc-200 font-medium">Rua Luiz Correia, 91 - Moinho Velho, Cotia - SP</p>
+              <p class="text-zinc-400 text-[11px] mt-1">Seu pedido será preparado assim que enviado via WhatsApp.</p>
+            </div>
+          </div>
+
+          <!-- Dados do Cliente e Endereço -->
+          <div class="space-y-3 pt-2">
+            <div>
+              <label for="input-customer-name" class="block text-xs font-semibold text-zinc-300 mb-1">Seu Nome Completo *</label>
+              <input
+                id="input-customer-name"
+                type="text"
+                placeholder="Ex: João da Silva"
+                class="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label for="input-customer-phone" class="block text-xs font-semibold text-zinc-300 mb-1">Seu WhatsApp / Telefone *</label>
+              <input
+                id="input-customer-phone"
+                type="tel"
+                maxlength="15"
+                placeholder="(11) 99999-9999"
+                class="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <!-- Campos Específicos de Endereço (Ocultos se Retirada) -->
+            <div id="delivery-address-fields" class="space-y-3">
+              <div class="grid grid-cols-3 gap-2">
+                <div class="col-span-2">
+                  <label for="input-street" class="block text-xs font-semibold text-zinc-300 mb-1">Rua / Logradouro *</label>
+                  <input
+                    id="input-street"
+                    type="text"
+                    placeholder="Ex: Rua das Flores"
+                    class="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label for="input-number" class="block text-xs font-semibold text-zinc-300 mb-1">Número *</label>
+                  <input
+                    id="input-number"
+                    type="text"
+                    placeholder="123"
+                    class="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label for="input-neighborhood" class="block text-xs font-semibold text-zinc-300 mb-1">Bairro *</label>
+                  <input
+                    id="input-neighborhood"
+                    type="text"
+                    placeholder="Ex: Centro"
+                    class="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label for="input-complement" class="block text-xs font-semibold text-zinc-300 mb-1">Complemento / Ref.</label>
+                  <input
+                    id="input-complement"
+                    type="text"
+                    placeholder="Apto, Casa 2..."
+                    class="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700/70 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Forma de Pagamento -->
+          <div class="pt-4 border-t border-zinc-800">
+            <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2.5">Forma de Pagamento</h4>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-700/70 cursor-pointer text-center text-xs">
+                <input type="radio" name="payment-method" id="payment-pix" value="pix" checked class="mb-1 text-amber-500 focus:ring-amber-500" />
+                <span class="font-bold text-zinc-200">Pix</span>
+                <span class="text-[10px] text-zinc-400">Chave/QR</span>
+              </label>
+
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-700/70 cursor-pointer text-center text-xs">
+                <input type="radio" name="payment-method" id="payment-cartao" value="cartao" class="mb-1 text-amber-500 focus:ring-amber-500" />
+                <span class="font-bold text-zinc-200">Cartão</span>
+                <span class="text-[10px] text-zinc-400">Maquininha</span>
+              </label>
+
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-700/70 cursor-pointer text-center text-xs">
+                <input type="radio" name="payment-method" id="payment-dinheiro" value="dinheiro" class="mb-1 text-amber-500 focus:ring-amber-500" />
+                <span class="font-bold text-zinc-200">Dinheiro</span>
+                <span class="text-[10px] text-zinc-400">Com troco</span>
+              </label>
+            </div>
+
+            <!-- Aviso Pix -->
+            <div id="pix-info-card" class="mt-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300">
+              💡 Chave Pix e comprovante serão combinados diretamente na conversa do WhatsApp.
+            </div>
+
+            <!-- Seção de Troco (Dinheiro) -->
+            <div id="cash-change-section" class="hidden mt-3 p-3 rounded-xl bg-zinc-800/60 border border-zinc-700/60 space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-zinc-200">
+                <input type="checkbox" id="toggle-need-change" class="rounded text-amber-500 focus:ring-amber-500" />
+                <span>Precisa de troco?</span>
+              </label>
+              <div class="hidden">
+                <label for="input-change-for" class="block text-[11px] text-zinc-400 mb-1">Troco para quanto?</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-zinc-400 font-bold">R$</span>
+                  <input
+                    id="input-change-for"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 50,00"
+                    class="w-full pl-8 pr-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-100 placeholder-zinc-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Rodapé do Carrinho com Totais e Botão WhatsApp -->
+        <div class="p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800 space-y-3">
+          <div class="space-y-1.5 text-xs">
+            <div class="flex items-center justify-between text-zinc-400">
+              <span>Subtotal dos itens:</span>
+              <span id="cart-subtotal-text" class="font-semibold text-zinc-200">R$ 0,00</span>
+            </div>
+            <div class="flex items-center justify-between text-zinc-400">
+              <span>Taxa de Entrega:</span>
+              <span class="font-medium text-amber-400">A confirmar no WhatsApp</span>
+            </div>
+            <div class="flex items-center justify-between text-sm sm:text-base font-black text-white pt-2 border-t border-zinc-800">
+              <span>Total Estimado:</span>
+              <span id="cart-total-text" class="text-amber-400 text-lg">R$ 0,00</span>
+            </div>
+          </div>
+
+          <button
+            id="submit-order-btn"
+            type="button"
+            class="w-full py-3.5 px-4 rounded-xl font-black text-sm bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-zinc-950 shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.974.536 1.879.82 2.791.82 3.182 0 5.767-2.587 5.768-5.766 0-3.182-2.587-5.768-5.768-5.768zm0 10.455c-.83 0-1.642-.224-2.35-.648l-.168-.101-1.745.457.466-1.701-.111-.177c-.463-.736-.708-1.597-.707-2.519.001-2.474 2.013-4.486 4.487-4.486 2.473 0 4.485 2.012 4.486 4.486-.001 2.475-2.013 4.489-4.368 4.489zm9.969-4.693c-.078-4.04-1.746-7.828-4.696-10.671-2.951-2.843-6.817-4.308-10.89-4.125-4.072.182-7.804 2.029-10.509 5.201-2.705 3.172-3.953 7.247-3.515 11.472.438 4.225 2.54 8.024 5.918 10.7 3.378 2.676 7.625 3.864 11.961 3.346 4.336-.518 8.197-2.73 10.874-6.229 2.677-3.499 3.735-7.854 2.977-12.264l-.089-.434.969-.226z"/>
+            </svg>
+            <span>Enviar Pedido pelo WhatsApp</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       RODAPÉ INFORMATIVO
+       ========================================================================= -->
+  <footer class="mt-auto border-t border-zinc-800 bg-zinc-950 py-8 px-4 sm:px-6">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs text-zinc-500">
+      <div>
+        <p class="font-bold text-zinc-300">Burguer On Artesanal & Lele Bolos no Pote</p>
+        <p class="mt-0.5">Rua Luiz Correia, 91 - Moinho Velho, Cotia - SP</p>
+      </div>
+      <div>
+        <p>WhatsApp Oficial: <a href="https://wa.me/5511913219550" target="_blank" class="text-amber-400 hover:underline font-semibold">(11) 91321-9550</a></p>
+        <p class="mt-0.5">Horário: Quarta a Domingo das 18h às 23h30</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- =========================================================================
+       CONTAINER DE TOASTS FLUTUANTES
+       ========================================================================= -->
+  <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none p-2"></div>
+
+  <!-- Scripts Modulares -->
+  <script type="module" src="./assets/js/app.js"></script>
+
+</body>
+</html>
