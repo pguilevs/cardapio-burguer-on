@@ -398,7 +398,7 @@ export const PRODUCTS = [
     price: 7.99,
     description: "Creme aveludado de limão taiti, base de biscoito amanteigado crocante e raspas naturais de limão.",
     badge: "Lele Bolos no Pote 🍋",
-    image: "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/torta-limao.webp",
     allowExtras: false
   },
   {
@@ -408,7 +408,7 @@ export const PRODUCTS = [
     price: 7.99,
     description: "Mousse aerado preparado com fruta natural, finalizado com calda brilhante e sementinhas de maracujá.",
     badge: "Fruta Natural 💛",
-    image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/mousse-maracuja.webp",
     allowExtras: false
   },
   {
@@ -418,7 +418,7 @@ export const PRODUCTS = [
     price: 7.99,
     description: "Textura cremosa e delicada, com calda artesanal e pedaços de morango fresco selecionado.",
     badge: "Fruta Natural 🍓",
-    image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/mousse-morango.webp",
     allowExtras: false
   },
   {
@@ -428,7 +428,7 @@ export const PRODUCTS = [
     price: 7.99,
     description: "Equilíbrio perfeito de doçura e acidez refrescante, com pedacinhos de abacaxi cozidos em calda caseira.",
     badge: "Fruta Natural 🍍",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=700&q=80",
+    image: "./assets/images/mousse-abacaxi.webp",
     allowExtras: false
   },
   {
