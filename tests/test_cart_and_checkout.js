@@ -90,21 +90,60 @@ state = getCartState();
 assert(state.items[0].quantity === 2, "Quantidade incrementada para 2");
 assert(Math.abs(state.subtotal - 95.96) < 0.01, "Subtotal duplicado corretamente");
 
-// 3. Testes do Módulo de CEP e Frete Regional de Cotia
+// 3. Testes do Módulo de CEP e Frete Regional de Cotia (Raio Máximo: 15 km)
 assert(formatCEPMask("06716040") === "06716-040", "Máscara de CEP com 8 dígitos formatada corretamente");
 assert(formatCEPMask("06716") === "06716", "Máscara de CEP incompleta tratada");
 
-// Frete por bairro de Cotia
-assert(calculateDeliveryFee("Moinho Velho", "Cotia", "delivery").fee === 5.00, "Frete Moinho Velho R$ 5,00");
-assert(calculateDeliveryFee("Jardim Rosemary", "Cotia", "delivery").fee === 6.00, "Frete Jardim Rosemary R$ 6,00");
-assert(calculateDeliveryFee("Parque Alexandre", "Cotia", "delivery").fee === 7.00, "Frete Parque Alexandre R$ 7,00");
-assert(calculateDeliveryFee("Jardim Nomura", "Cotia", "delivery").fee === 7.00, "Frete Jardim Nomura R$ 7,00");
-assert(calculateDeliveryFee("Centro", "Cotia", "delivery").fee === 8.00, "Frete Centro de Cotia R$ 8,00");
-assert(calculateDeliveryFee("Granja Viana", "Cotia", "delivery").fee === 14.00, "Frete Granja Viana R$ 14,00");
-assert(calculateDeliveryFee("Caucaia do Alto", "Cotia", "delivery").fee === 16.00, "Frete Caucaia do Alto R$ 16,00");
-assert(calculateDeliveryFee("Bairro Não Mapeado", "Cotia", "delivery").fee === 8.50, "Frete Padrão Cotia R$ 8,50");
-assert(calculateDeliveryFee("Centro", "Itapevi", "delivery").fee === 15.00, "Frete Cidades Vizinhas R$ 15,00");
-assert(calculateDeliveryFee("Moinho Velho", "Cotia", "retirada").fee === 0.00, "Frete Retirada no Local R$ 0,00");
+// Entregas autorizadas (distância <= 15 km)
+const moinho = calculateDeliveryFee("Moinho Velho", "Cotia", "delivery");
+assert(moinho.fee === 5.00 && moinho.isDeliverable === true, "Frete Moinho Velho R$ 5,00 (dentro do limite)");
+
+const rosemary = calculateDeliveryFee("Jardim Rosemary", "Cotia", "delivery");
+assert(rosemary.fee === 6.00 && rosemary.isDeliverable === true, "Frete Jardim Rosemary R$ 6,00 (dentro do limite)");
+
+const pqAlexandre = calculateDeliveryFee("Parque Alexandre", "Cotia", "delivery");
+assert(pqAlexandre.fee === 7.00 && pqAlexandre.isDeliverable === true, "Frete Parque Alexandre R$ 7,00 (dentro do limite)");
+
+const nomura = calculateDeliveryFee("Jardim Nomura", "Cotia", "delivery");
+assert(nomura.fee === 7.00 && nomura.isDeliverable === true, "Frete Jardim Nomura R$ 7,00 (dentro do limite)");
+
+const centro = calculateDeliveryFee("Centro", "Cotia", "delivery");
+assert(centro.fee === 8.00 && centro.isDeliverable === true, "Frete Centro de Cotia R$ 8,00 (dentro do limite)");
+
+const granja = calculateDeliveryFee("Granja Viana", "Cotia", "delivery");
+assert(granja.fee === 14.00 && granja.isDeliverable === true, "Frete Granja Viana R$ 14,00 (dentro do limite)");
+
+const padraoCotia = calculateDeliveryFee("Bairro Não Mapeado", "Cotia", "delivery");
+assert(padraoCotia.fee === 8.50 && padraoCotia.isDeliverable === true, "Frete Padrão Cotia R$ 8,50 (dentro do limite)");
+
+const itapevi = calculateDeliveryFee("Centro", "Itapevi", "delivery");
+assert(itapevi.fee === 15.00 && itapevi.isDeliverable === true, "Frete Itapevi R$ 15,00 (dentro do limite de 15 km)");
+
+const vargemGrande = calculateDeliveryFee("Centro", "Vargem Grande Paulista", "delivery");
+assert(vargemGrande.fee === 15.00 && vargemGrande.isDeliverable === true, "Frete Vargem Grande Paulista R$ 15,00 (dentro do limite de 15 km)");
+
+const jandira = calculateDeliveryFee("Centro", "Jandira", "delivery");
+assert(jandira.fee === 15.00 && jandira.isDeliverable === true, "Frete Jandira R$ 15,00 (dentro do limite de 15 km)");
+
+const retirada = calculateDeliveryFee("Moinho Velho", "Cotia", "retirada");
+assert(retirada.fee === 0.00 && retirada.isDeliverable === true, "Frete Retirada no Local R$ 0,00 (sempre permitido)");
+
+// BLOQUEIO OBRIGATÓRIO: Distâncias superiores a 15 km NÃO podem realizar entrega
+const caucaia = calculateDeliveryFee("Caucaia do Alto", "Cotia", "delivery");
+assert(caucaia.isDeliverable === false && caucaia.fee === 0, "Caucaia do Alto (~19.5 km > 15 km) bloqueado para entrega");
+assert(caucaia.message.includes("15 km"), "Mensagem de Caucaia do Alto menciona limite de 15 km");
+
+const carapicuiba = calculateDeliveryFee("Centro", "Carapicuíba", "delivery");
+assert(carapicuiba.isDeliverable === false, "Carapicuíba (> 15 km) bloqueado para entrega");
+
+const barueri = calculateDeliveryFee("Alphaville", "Barueri", "delivery");
+assert(barueri.isDeliverable === false, "Barueri / Alphaville (> 15 km) bloqueado para entrega");
+
+const osasco = calculateDeliveryFee("Centro", "Osasco", "delivery");
+assert(osasco.isDeliverable === false, "Osasco (> 15 km) bloqueado para entrega");
+
+const saoPaulo = calculateDeliveryFee("Pinheiros", "São Paulo", "delivery");
+assert(saoPaulo.isDeliverable === false, "São Paulo Capital (> 15 km) bloqueado para entrega");
 
 // 4. Testes de Validação do Checkout
 const formInvalido = {
@@ -122,6 +161,21 @@ assert(valInvalida.errors.customerName !== undefined, "Erro no nome detectado");
 assert(valInvalida.errors.customerPhone !== undefined, "Erro no telefone detectado");
 assert(valInvalida.errors.street !== undefined, "Erro na rua detectado");
 
+// Formulário com endereço além de 15 km DEVE ser rejeitado para entrega
+const formDistanteBloqueado = {
+  customerName: "Lucas Morador de Caucaia",
+  customerPhone: "(11) 98888-7777",
+  deliveryType: "delivery",
+  street: "Estrada de Caucaia",
+  number: "500",
+  neighborhood: "Caucaia do Alto",
+  city: "Cotia",
+  paymentMethod: "pix"
+};
+const valDistante = validateCheckoutForm(formDistanteBloqueado);
+assert(!valDistante.isValid, "Formulário com distância > 15 km rejeitado para delivery");
+assert(valDistante.errors.delivery !== undefined, "Erro explícito de limite de entrega gerado");
+
 const formValidoDelivery = {
   customerName: "Carlos Silva",
   customerPhone: "(11) 98765-4321",
@@ -136,6 +190,16 @@ const formValidoDelivery = {
 };
 const valValidaDelivery = validateCheckoutForm(formValidoDelivery);
 assert(valValidaDelivery.isValid, "Formulário de delivery válido aceito com sucesso");
+
+// Morador de Caucaia (> 15 km) escolhendo Retirada no Local DEVE ser aceito
+const formCaucaiaRetirada = {
+  customerName: "Lucas Morador de Caucaia",
+  customerPhone: "(11) 98888-7777",
+  deliveryType: "retirada",
+  paymentMethod: "pix"
+};
+const valCaucaiaRetirada = validateCheckoutForm(formCaucaiaRetirada);
+assert(valCaucaiaRetirada.isValid, "Morador de Caucaia aceito para Retirada no Local");
 
 // 5. Teste de Retirada no Local
 const formValidoRetirada = {

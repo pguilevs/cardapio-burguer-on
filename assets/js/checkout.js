@@ -32,6 +32,11 @@ export function validateCheckoutForm(formData, customFreight = null) {
     }
     if (!formData.neighborhood || formData.neighborhood.trim().length < 2) {
       errors.neighborhood = "Informe o bairro para cálculo de entrega.";
+    } else {
+      const deliveryInfo = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia", "delivery", formData.cep);
+      if (!deliveryInfo.isDeliverable) {
+        errors.delivery = deliveryInfo.message || "A entrega está indisponível para distâncias acima de 15 km da loja. Por favor, selecione 'Retirada no Local'.";
+      }
     }
   }
 
@@ -41,7 +46,8 @@ export function validateCheckoutForm(formData, customFreight = null) {
     if (customFreight !== null && typeof customFreight === "number") {
       freight = customFreight;
     } else if (formData.neighborhood) {
-      freight = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia").fee;
+      const feeRes = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia", "delivery", formData.cep);
+      freight = feeRes.isDeliverable ? feeRes.fee : 0;
     }
   }
   const total = subtotal + freight;
@@ -63,24 +69,20 @@ export function validateCheckoutForm(formData, customFreight = null) {
 }
 
 /**
- * Processa a validação e salva o pedido diretamente no Firestore (e canal KDS em tempo real)
- * Sem depender de envio manual pelo WhatsApp
- * @param {Object} formData 
- * @param {number|null} explicitFreight 
- * @returns {Promise<{ success: boolean, order?: Object, errors?: Object }>}
- */
-/**
  * Formata o objeto de pedido para gravação no Firestore
  */
 export function formatOrderPayload(formData, cartState, explicitFreight = null, forcedOrderNumber = null) {
   const { items, subtotal } = cartState || getCartState();
   let freight = 0;
+  let distanceKm = 0;
+
   if (formData.deliveryType === "delivery") {
+    const feeRes = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia", "delivery", formData.cep);
+    distanceKm = feeRes.distanceKm || 0;
     if (explicitFreight !== null && typeof explicitFreight === "number") {
       freight = explicitFreight;
     } else {
-      const feeRes = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia");
-      freight = feeRes.fee || 0;
+      freight = feeRes.isDeliverable ? feeRes.fee : 0;
     }
   }
 
@@ -99,6 +101,7 @@ export function formatOrderPayload(formData, cartState, explicitFreight = null, 
     tipo: formData.deliveryType || "delivery",
     status: "pendente",
     impresso: false,
+    distanciaKm: Number(distanceKm.toFixed(1)),
     cliente: {
       nome: (formData.customerName || "").trim(),
       telefone: (formData.customerPhone || "").trim(),
@@ -136,6 +139,19 @@ export async function processAndSaveOrder(formData, explicitFreight = null) {
       success: false,
       errors: validation.errors
     };
+  }
+
+  // Verificação de segurança: bloqueia entrega se for > 15 km
+  if (formData.deliveryType === "delivery") {
+    const deliveryInfo = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia", "delivery", formData.cep);
+    if (!deliveryInfo.isDeliverable) {
+      return {
+        success: false,
+        errors: {
+          delivery: deliveryInfo.message || "A entrega está indisponível para distâncias acima de 15 km. Por favor, selecione 'Retirada no Local'."
+        }
+      };
+    }
   }
 
   const { items, subtotal } = getCartState();

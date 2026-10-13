@@ -158,6 +158,7 @@ function buildThermalReceiptHTML(order) {
       <div class="rcpt-section-title">ENDEREÇO DE ENTREGA:</div>
       <div>${cli.rua || ""}, Nº ${cli.numero || "S/N"}</div>
       <div>Bairro: ${cli.bairro || ""} - ${cli.cidade || "Cotia - SP"}</div>
+      ${order.distanciaKm ? `<div>Distância da Loja: ~${Number(order.distanciaKm).toFixed(1).replace(".", ",")} km</div>` : ""}
       ${cli.cep ? `<div>CEP: ${cli.cep}</div>` : ""}
       ${cli.complemento ? `<div>Compl/Ref: ${cli.complemento}</div>` : ""}
       <div class="rcpt-divider"></div>
@@ -365,7 +366,7 @@ function renderOrderCard(order) {
         ${isDelivery ? `
           <div class="customer-address">
             📍 <strong>${cli.rua || ""}, Nº ${cli.numero || "S/N"}</strong><br>
-            Bairro: ${cli.bairro || ""} - Cotia/SP<br>
+            Bairro: ${cli.bairro || ""} - Cotia/SP ${order.distanciaKm ? `<span style="color:#f59e0b; font-weight:700;">(~${Number(order.distanciaKm).toFixed(1).replace(".", ",")} km)</span>` : ""}<br>
             ${cli.complemento ? `Ref: <em>${cli.complemento}</em>` : ""}
           </div>
         ` : `

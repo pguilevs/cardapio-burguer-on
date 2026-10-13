@@ -620,10 +620,14 @@ function handleCartUpdate({ items, totalItemsCount, subtotal }) {
 
 /**
  * Atualiza o cálculo da taxa de entrega e o total geral
+ * Bloqueia qualquer entrega para distâncias superiores a 15 km
  */
 function updateDeliveryFeeDisplay() {
-  const isDelivery = dom.deliveryTypeDelivery.classList.contains("bg-amber-500");
+  const isDelivery = dom.deliveryTypeDelivery && dom.deliveryTypeDelivery.classList.contains("bg-amber-500");
   const { subtotal } = getCartState();
+
+  const distanceAlert = document.getElementById("delivery-distance-alert");
+  const distanceAlertMsg = document.getElementById("distance-alert-msg");
 
   if (!isDelivery) {
     currentDeliveryFee = 0;
@@ -631,16 +635,55 @@ function updateDeliveryFeeDisplay() {
       dom.cartDeliveryFeeText.textContent = "Grátis (Retirada)";
       dom.cartDeliveryFeeText.className = "font-bold text-emerald-400";
     }
+    if (distanceAlert) distanceAlert.classList.add("hidden");
+    if (dom.submitOrderBtn) {
+      dom.submitOrderBtn.disabled = false;
+      dom.submitOrderBtn.classList.remove("opacity-50", "cursor-not-allowed");
+      if (dom.submitBtnText) dom.submitBtnText.textContent = "Confirmar Pedido";
+    }
   } else {
     const neighborhood = dom.inputNeighborhood ? dom.inputNeighborhood.value.trim() : "";
     const city = dom.inputCity ? dom.inputCity.value.trim() : "Cotia";
+    const rawCep = dom.inputCep ? dom.inputCep.value.trim() : "";
 
-    if (neighborhood.length >= 2) {
-      const res = calculateDeliveryFee(neighborhood, city);
-      currentDeliveryFee = res.fee;
-      if (dom.cartDeliveryFeeText) {
-        dom.cartDeliveryFeeText.textContent = formatBRL(res.fee);
-        dom.cartDeliveryFeeText.className = "font-bold text-amber-400";
+    if (neighborhood.length >= 2 || rawCep.length >= 8) {
+      const res = calculateDeliveryFee(neighborhood, city, "delivery", rawCep);
+
+      if (!res.isDeliverable) {
+        // ULTRAPASSOU 15 KM: ENTREGA PROIBIDA
+        currentDeliveryFee = 0;
+        if (dom.cartDeliveryFeeText) {
+          dom.cartDeliveryFeeText.textContent = "Indisponível (> 15 km)";
+          dom.cartDeliveryFeeText.className = "font-bold text-rose-400";
+        }
+
+        if (distanceAlert) {
+          distanceAlert.classList.remove("hidden");
+          if (distanceAlertMsg) {
+            distanceAlertMsg.textContent = res.message;
+          }
+        }
+
+        if (dom.submitOrderBtn) {
+          dom.submitOrderBtn.disabled = true;
+          dom.submitOrderBtn.classList.add("opacity-50", "cursor-not-allowed");
+          if (dom.submitBtnText) dom.submitBtnText.textContent = "Entrega Indisponível (> 15 km)";
+        }
+      } else {
+        // DENTRO DE 15 KM: ENTREGA AUTORIZADA
+        currentDeliveryFee = res.fee;
+        if (dom.cartDeliveryFeeText) {
+          dom.cartDeliveryFeeText.textContent = res.label;
+          dom.cartDeliveryFeeText.className = "font-bold text-amber-400";
+        }
+
+        if (distanceAlert) distanceAlert.classList.add("hidden");
+
+        if (dom.submitOrderBtn) {
+          dom.submitOrderBtn.disabled = false;
+          dom.submitOrderBtn.classList.remove("opacity-50", "cursor-not-allowed");
+          if (dom.submitBtnText) dom.submitBtnText.textContent = "Confirmar Pedido";
+        }
       }
     } else {
       currentDeliveryFee = 0;
@@ -648,11 +691,19 @@ function updateDeliveryFeeDisplay() {
         dom.cartDeliveryFeeText.textContent = "Informe o CEP ou Bairro";
         dom.cartDeliveryFeeText.className = "font-medium text-zinc-400";
       }
+      if (distanceAlert) distanceAlert.classList.add("hidden");
+      if (dom.submitOrderBtn) {
+        dom.submitOrderBtn.disabled = false;
+        dom.submitOrderBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        if (dom.submitBtnText) dom.submitBtnText.textContent = "Confirmar Pedido";
+      }
     }
   }
 
   const grandTotal = subtotal + currentDeliveryFee;
-  dom.cartTotalText.textContent = formatBRL(grandTotal);
+  if (dom.cartTotalText) {
+    dom.cartTotalText.textContent = formatBRL(grandTotal);
+  }
 }
 
 /**
@@ -672,7 +723,7 @@ async function searchAddressByCep() {
   }
 
   if (dom.cepFeedback) {
-    dom.cepFeedback.textContent = "Buscando endereço...";
+    dom.cepFeedback.textContent = "Buscando endereço e distância...";
     dom.cepFeedback.className = "text-[11px] font-medium text-amber-400 animate-pulse";
   }
 
@@ -686,12 +737,19 @@ async function searchAddressByCep() {
       if (dom.inputNeighborhood && res.neighborhood) dom.inputNeighborhood.value = res.neighborhood;
       if (dom.inputCity && res.city) dom.inputCity.value = `${res.city} - ${res.uf}`;
 
-      if (dom.cepFeedback) {
-        dom.cepFeedback.textContent = `✓ Frete: ${formatBRL(res.fee)}`;
-        dom.cepFeedback.className = "text-[11px] font-bold text-emerald-400";
+      if (res.isDeliverable) {
+        if (dom.cepFeedback) {
+          dom.cepFeedback.textContent = `✓ Frete: ${formatBRL(res.fee)} (~${res.distanceKm.toFixed(1).replace(".", ",")} km)`;
+          dom.cepFeedback.className = "text-[11px] font-bold text-emerald-400";
+        }
+        showToast(`CEP localizado! Frete: ${formatBRL(res.fee)} (${res.neighborhood || res.city})`);
+      } else {
+        if (dom.cepFeedback) {
+          dom.cepFeedback.textContent = `⚠️ Distância > 15 km (~${res.distanceKm.toFixed(1).replace(".", ",")} km) - Não entregamos nesta distância`;
+          dom.cepFeedback.className = "text-[11px] font-bold text-rose-400";
+        }
+        showToast(`Endereço a ~${res.distanceKm.toFixed(1).replace(".", ",")} km da loja! Entregas apenas até 15 km. Selecione 'Retirada no Local'.`, "warning");
       }
-
-      showToast(`CEP localizado! Frete: ${formatBRL(res.fee)} (${res.neighborhood || res.city})`);
 
       // Foca automaticamente no número da residência
       if (dom.inputNumber) {
@@ -882,10 +940,27 @@ function setupEventListeners() {
     dom.btnSearchCep.addEventListener("click", searchAddressByCep);
   }
 
-  // Se digitar o bairro manualmente, atualiza o frete imediatamente
+  // Se digitar o bairro ou cidade manualmente, atualiza o frete imediatamente
   if (dom.inputNeighborhood) {
     dom.inputNeighborhood.addEventListener("input", () => {
       updateDeliveryFeeDisplay();
+    });
+  }
+
+  if (dom.inputCity) {
+    dom.inputCity.addEventListener("input", () => {
+      updateDeliveryFeeDisplay();
+    });
+  }
+
+  // Botão no alerta de distância para alternar rapidamente para Retirada no Local
+  const btnSwitchPickupAlert = document.getElementById("btn-switch-pickup-alert");
+  if (btnSwitchPickupAlert) {
+    btnSwitchPickupAlert.addEventListener("click", () => {
+      if (dom.deliveryTypePickup) {
+        dom.deliveryTypePickup.click();
+        showToast("Modalidade alterada para Retirada no Balcão! Sem taxa de entrega. 🥡");
+      }
     });
   }
 
