@@ -13,7 +13,8 @@ import {
   removeItemFromCart,
   clearCart
 } from "../assets/js/cart.js";
-import { validateCheckoutForm, buildWhatsAppMessage } from "../assets/js/checkout.js";
+import { validateCheckoutForm, buildWhatsAppMessage, formatOrderPayload } from "../assets/js/checkout.js";
+import { calculateDeliveryFee, formatCEPMask, SHIPPING_RATES } from "../assets/js/shipping.js";
 
 // Mock localStorage para Node.js
 global.localStorage = {
@@ -89,7 +90,23 @@ state = getCartState();
 assert(state.items[0].quantity === 2, "Quantidade incrementada para 2");
 assert(Math.abs(state.subtotal - 95.96) < 0.01, "Subtotal duplicado corretamente");
 
-// 3. Testes de Validação do Checkout
+// 3. Testes do Módulo de CEP e Frete Regional de Cotia
+assert(formatCEPMask("06716040") === "06716-040", "Máscara de CEP com 8 dígitos formatada corretamente");
+assert(formatCEPMask("06716") === "06716", "Máscara de CEP incompleta tratada");
+
+// Frete por bairro de Cotia
+assert(calculateDeliveryFee("Moinho Velho", "Cotia", "delivery").fee === 5.00, "Frete Moinho Velho R$ 5,00");
+assert(calculateDeliveryFee("Jardim Rosemary", "Cotia", "delivery").fee === 6.00, "Frete Jardim Rosemary R$ 6,00");
+assert(calculateDeliveryFee("Parque Alexandre", "Cotia", "delivery").fee === 7.00, "Frete Parque Alexandre R$ 7,00");
+assert(calculateDeliveryFee("Jardim Nomura", "Cotia", "delivery").fee === 7.00, "Frete Jardim Nomura R$ 7,00");
+assert(calculateDeliveryFee("Centro", "Cotia", "delivery").fee === 8.00, "Frete Centro de Cotia R$ 8,00");
+assert(calculateDeliveryFee("Granja Viana", "Cotia", "delivery").fee === 14.00, "Frete Granja Viana R$ 14,00");
+assert(calculateDeliveryFee("Caucaia do Alto", "Cotia", "delivery").fee === 16.00, "Frete Caucaia do Alto R$ 16,00");
+assert(calculateDeliveryFee("Bairro Não Mapeado", "Cotia", "delivery").fee === 8.50, "Frete Padrão Cotia R$ 8,50");
+assert(calculateDeliveryFee("Centro", "Itapevi", "delivery").fee === 15.00, "Frete Cidades Vizinhas R$ 15,00");
+assert(calculateDeliveryFee("Moinho Velho", "Cotia", "retirada").fee === 0.00, "Frete Retirada no Local R$ 0,00");
+
+// 4. Testes de Validação do Checkout
 const formInvalido = {
   customerName: "",
   customerPhone: "123",
@@ -109,16 +126,18 @@ const formValidoDelivery = {
   customerName: "Carlos Silva",
   customerPhone: "(11) 98765-4321",
   deliveryType: "delivery",
-  street: "Av. Brasil",
+  cep: "06716-040",
+  street: "Rua das Amendoeiras",
   number: "100",
-  neighborhood: "Jardim das Flores",
+  neighborhood: "Moinho Velho",
+  city: "Cotia",
   complement: "Apto 42",
   paymentMethod: "pix"
 };
 const valValidaDelivery = validateCheckoutForm(formValidoDelivery);
 assert(valValidaDelivery.isValid, "Formulário de delivery válido aceito com sucesso");
 
-// 4. Teste de Retirada no Local
+// 5. Teste de Retirada no Local
 const formValidoRetirada = {
   customerName: "Mariana Souza",
   customerPhone: "(11) 91234-5678",
@@ -130,14 +149,27 @@ const formValidoRetirada = {
 const valValidaRetirada = validateCheckoutForm(formValidoRetirada);
 assert(valValidaRetirada.isValid, "Formulário de retirada aceito sem exigir endereço residencial");
 
-// 5. Teste da Mensagem Formatada para WhatsApp
-const msg = buildWhatsAppMessage(formValidoDelivery);
-assert(msg.includes("🍔 *NOVO PEDIDO - BURGUER ON*"), "Título do pedido presente na mensagem");
+// 6. Teste da Estrutura do Pedido para Firestore
+const payload = formatOrderPayload(formValidoDelivery, state, 5.00, "1005");
+assert(payload.numero === "1005", "Número do pedido sequencial presente no payload");
+assert(payload.status === "pendente", "Status inicial é pendente");
+assert(payload.impresso === false, "Flag impresso é false inicialmente");
+assert(payload.tipo === "delivery", "Tipo é delivery");
+assert(payload.frete === 5.00, "Taxa de entrega computada corretamente no payload");
+assert(payload.cliente.nome === "Carlos Silva", "Nome do cliente preservado");
+assert(payload.cliente.bairro === "Moinho Velho", "Bairro do cliente preservado");
+assert(payload.itens.length === 1, "Itens do carrinho presentes no payload");
+assert(Math.abs(payload.total - (state.subtotal + 5.00)) < 0.01, "Total do pedido é subtotal + frete");
+
+// 7. Teste da Mensagem Opcional de WhatsApp
+const msg = buildWhatsAppMessage(formValidoDelivery, 5.00, "1005");
+assert(msg.includes("🍔 *PEDIDO #1005 - BURGUER ON*"), "Título do pedido com número presente na mensagem");
 assert(msg.includes("*Cliente:* Carlos Silva"), "Nome do cliente formatado corretamente");
 assert(msg.includes("X-Tudo"), "Nome do lanche presente");
 assert(msg.includes("+ Adicional: Bacon"), "Adicional presente");
 assert(msg.includes("Obs: Sem tomate"), "Observação presente");
 assert(msg.includes("*Forma de Pagamento:* Pix"), "Forma de pagamento presente");
+assert(msg.includes("*Taxa de Entrega:*") && msg.includes("5,00"), "Taxa de entrega presente no WhatsApp");
 
 console.log("\n================================================");
 console.log(`TOTAL: ${passed} passaram, ${failed} falharam.`);

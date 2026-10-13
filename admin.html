@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel da Cozinha & Balcão | Burguer On Artesanal</title>
+  <meta name="description" content="Sistema de Gestão da Cozinha (KDS), pedidos em tempo real e comanda térmica 80mm para Burguer On Artesanal.">
+  <link rel="icon" type="image/png" href="assets/images/logo_burguer_on.png">
+  <link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+  <!-- CABEÇALHO KDS -->
+  <header class="kds-header">
+    <div class="kds-brand">
+      <img src="assets/images/logo_burguer_on.png" alt="Burguer On Logo" class="kds-logo">
+      <div class="kds-title">
+        <h1>
+          Burguer On
+          <span class="kds-status-badge">
+            <span class="kds-status-dot"></span>
+            Em Tempo Real
+          </span>
+        </h1>
+        <div class="kds-subtitle">Painel da Cozinha, Balcão & Impressão 80mm</div>
+      </div>
+    </div>
+
+    <div id="kds-clock" class="kds-clock">00:00:00</div>
+
+    <div class="kds-controls">
+      <button id="btn-toggle-sound" class="btn-ctrl active-sound" title="Ativar ou desativar aviso sonoro contínuo">
+        🔊 Som Ativado
+      </button>
+
+      <button id="btn-toggle-autoprint" class="btn-ctrl active-print" title="Disparo automático de impressão de pedidos novos">
+        🖨️ Auto-Print 80mm ON
+      </button>
+
+      <button id="btn-test-sound" class="btn-ctrl" title="Testar áudio de bip da cozinha">
+        🔔 Bip Teste
+      </button>
+
+      <button id="btn-demo-order" class="btn-ctrl" title="Simular novo pedido no sistema">
+        ⚡ Pedido Teste
+      </button>
+
+      <button id="btn-settings" class="btn-ctrl" title="Configurar Firebase Firestore">
+        ⚙️ Config
+      </button>
+
+      <a href="index.html" class="btn-ctrl btn-back-menu" title="Voltar para a página de vendas">
+        🍔 Cardápio
+      </a>
+    </div>
+  </header>
+
+  <!-- BARRA DE ALERTA DE PEDIDOS PENDENTES -->
+  <div id="kds-alert-bar" class="kds-alert-bar hidden">
+    <div>
+      🚨 <strong>NOVO PEDIDO CHEGANDO!</strong> Há <span id="alert-pending-count">0</span> pedido(s) aguardando aceite e preparo na chapa.
+    </div>
+    <button id="btn-silence-alert" class="btn-silence-alert">
+      Silenciar Alarme 🔕
+    </button>
+  </div>
+
+  <!-- NAVEGAÇÃO DE ABAS / FILTROS -->
+  <nav class="kds-tabs-nav">
+    <button class="kds-tab-btn active" data-col="todos">
+      Todos <span class="tab-badge" id="count-todos">0</span>
+    </button>
+    <button class="kds-tab-btn" data-col="pending">
+      🔥 Pendentes <span class="tab-badge badge-danger" id="count-pending">0</span>
+    </button>
+    <button class="kds-tab-btn" data-col="preparo">
+      👨‍🍳 Na Chapa / Preparo <span class="tab-badge" id="count-preparo">0</span>
+    </button>
+    <button class="kds-tab-btn" data-col="entrega">
+      🛵 Em Rota / Pronto <span class="tab-badge" id="count-entrega">0</span>
+    </button>
+    <button class="kds-tab-btn" data-col="finalizado">
+      ✅ Finalizados <span class="tab-badge" id="count-finalizado">0</span>
+    </button>
+  </nav>
+
+  <!-- QUADRO KANBAN MULTICOLUNAS KDS -->
+  <main class="kds-container" id="kds-container">
+    
+    <!-- COLUNA 1: PENDENTES -->
+    <section class="kds-column" id="column-pending">
+      <div class="kds-column-header col-pending">
+        <span>🔥 PENDENTES</span>
+      </div>
+      <div class="kds-cards-list" id="list-pending">
+        <div class="kds-empty-state">Nenhum pedido pendente.</div>
+      </div>
+    </section>
+
+    <!-- COLUNA 2: EM PREPARO -->
+    <section class="kds-column" id="column-preparo">
+      <div class="kds-column-header col-preparing">
+        <span>👨‍🍳 NA CHAPA / PREPARO</span>
+      </div>
+      <div class="kds-cards-list" id="list-preparo">
+        <div class="kds-empty-state">Nenhum pedido no fogo.</div>
+      </div>
+    </section>
+
+    <!-- COLUNA 3: SAIU PARA ENTREGA / PRONTO NO BALCÃO -->
+    <section class="kds-column" id="column-entrega">
+      <div class="kds-column-header col-delivery">
+        <span>🛵 SAIU P/ ENTREGA / BALCÃO</span>
+      </div>
+      <div class="kds-cards-list" id="list-entrega">
+        <div class="kds-empty-state">Nenhum pedido aguardando despacho.</div>
+      </div>
+    </section>
+
+    <!-- COLUNA 4: FINALIZADOS -->
+    <section class="kds-column" id="column-finalizado">
+      <div class="kds-column-header col-completed">
+        <span>✅ CONCLUÍDOS HOJE</span>
+      </div>
+      <div class="kds-cards-list" id="list-finalizado">
+        <div class="kds-empty-state">Nenhum pedido finalizado ainda.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE CONFIGURAÇÃO DO FIREBASE -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Configuração do Firebase Firestore</h2>
+        <button id="btn-close-settings" class="btn-close-modal">&times;</button>
+      </div>
+      <form id="firebase-config-form">
+        <p style="font-size:0.8rem; color:#8b949e; margin-bottom:1rem;">
+          O sistema já possui sincronização local em tempo real entre abas e suporte à CDN do Firebase. Para usar seu projeto do Google Cloud / Firebase Console, informe abaixo:
+        </p>
+        <div class="form-group">
+          <label for="fb-project-id">Firebase Project ID</label>
+          <input type="text" id="fb-project-id" class="form-control" placeholder="ex: burguer-on-cotia" required>
+        </div>
+        <div class="form-group">
+          <label for="fb-api-key">API Key</label>
+          <input type="text" id="fb-api-key" class="form-control" placeholder="AIzaSy...">
+        </div>
+        <button type="submit" class="btn-ctrl active-sound" style="width:100%; justify-content:center; padding:0.65rem;">
+          💾 Salvar Configurações
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ÁREA DE IMPRESSÃO TÉRMICA (EXCLUSIVA PARA PAPEL 80MM / 72MM GOLDENSKY) -->
+  <div id="receipt-print-area"></div>
+
+  <!-- SCRIPT MODULAR DO PAINEL -->
+  <script type="module" src="assets/js/admin.js"></script>
+</body>
+</html>

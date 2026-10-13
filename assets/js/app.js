@@ -3,7 +3,7 @@
  * Controlador Principal da Aplicação SPA
  */
 
-import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012j";
+import { STORE_CONFIG, CATEGORIES, PRODUCTS, EXTRA_ITEMS, formatBRL } from "./products.js?v=20261012k";
 import {
   initCart,
   subscribeToCart,
@@ -13,7 +13,17 @@ import {
   decrementCartItem,
   removeItemFromCart
 } from "./cart.js";
-import { validateCheckoutForm, sendOrderToWhatsApp } from "./checkout.js";
+import {
+  validateCheckoutForm,
+  processAndSaveOrder,
+  buildWhatsAppMessage,
+  sendOrderToWhatsApp
+} from "./checkout.js";
+import {
+  lookupCEP,
+  formatCEPMask,
+  calculateDeliveryFee
+} from "./shipping.js";
 
 // Estado interno da UI
 let currentModalProduct = null;
@@ -21,6 +31,8 @@ let currentModalSelectedExtras = [];
 let currentModalQuantity = 1;
 let activeCategoryFilter = "all";
 let searchTerm = "";
+let currentDeliveryFee = 0;
+let lastCreatedOrder = null;
 
 // Elementos principais do DOM
 const dom = {
@@ -61,6 +73,7 @@ const dom = {
   cartItemsList: document.getElementById("cart-items-list"),
   cartEmptyState: document.getElementById("cart-empty-state"),
   cartSubtotalText: document.getElementById("cart-subtotal-text"),
+  cartDeliveryFeeText: document.getElementById("cart-delivery-fee-text"),
   cartTotalText: document.getElementById("cart-total-text"),
 
   // Barra Flutuante Mobile
@@ -75,9 +88,13 @@ const dom = {
   pickupInfoCard: document.getElementById("pickup-info-card"),
   inputCustomerName: document.getElementById("input-customer-name"),
   inputCustomerPhone: document.getElementById("input-customer-phone"),
+  inputCep: document.getElementById("input-cep"),
+  btnSearchCep: document.getElementById("btn-search-cep"),
+  cepFeedback: document.getElementById("cep-feedback"),
   inputStreet: document.getElementById("input-street"),
   inputNumber: document.getElementById("input-number"),
   inputNeighborhood: document.getElementById("input-neighborhood"),
+  inputCity: document.getElementById("input-city"),
   inputComplement: document.getElementById("input-complement"),
   paymentPix: document.getElementById("payment-pix"),
   paymentCartao: document.getElementById("payment-cartao"),
@@ -87,6 +104,15 @@ const dom = {
   inputChangeFor: document.getElementById("input-change-for"),
   pixInfoCard: document.getElementById("pix-info-card"),
   submitOrderBtn: document.getElementById("submit-order-btn"),
+  submitBtnIcon: document.getElementById("submit-btn-icon"),
+  submitBtnText: document.getElementById("submit-btn-text"),
+
+  // Modal Sucesso
+  orderSuccessModal: document.getElementById("order-success-modal"),
+  successOrderNumber: document.getElementById("success-order-number"),
+  successOrderSummary: document.getElementById("success-order-summary"),
+  btnTrackWhatsApp: document.getElementById("btn-track-whatsapp"),
+  btnCloseSuccessModal: document.getElementById("btn-close-success-modal"),
 
   // Toasts
   toastContainer: document.getElementById("toast-container")
@@ -589,7 +615,135 @@ function handleCartUpdate({ items, totalItemsCount, subtotal }) {
   }
 
   dom.cartSubtotalText.textContent = formatBRL(subtotal);
-  dom.cartTotalText.textContent = formatBRL(subtotal);
+  updateDeliveryFeeDisplay();
+}
+
+/**
+ * Atualiza o cálculo da taxa de entrega e o total geral
+ */
+function updateDeliveryFeeDisplay() {
+  const isDelivery = dom.deliveryTypeDelivery.classList.contains("bg-amber-500");
+  const { subtotal } = getCartState();
+
+  if (!isDelivery) {
+    currentDeliveryFee = 0;
+    if (dom.cartDeliveryFeeText) {
+      dom.cartDeliveryFeeText.textContent = "Grátis (Retirada)";
+      dom.cartDeliveryFeeText.className = "font-bold text-emerald-400";
+    }
+  } else {
+    const neighborhood = dom.inputNeighborhood ? dom.inputNeighborhood.value.trim() : "";
+    const city = dom.inputCity ? dom.inputCity.value.trim() : "Cotia";
+
+    if (neighborhood.length >= 2) {
+      const res = calculateDeliveryFee(neighborhood, city);
+      currentDeliveryFee = res.fee;
+      if (dom.cartDeliveryFeeText) {
+        dom.cartDeliveryFeeText.textContent = formatBRL(res.fee);
+        dom.cartDeliveryFeeText.className = "font-bold text-amber-400";
+      }
+    } else {
+      currentDeliveryFee = 0;
+      if (dom.cartDeliveryFeeText) {
+        dom.cartDeliveryFeeText.textContent = "Informe o CEP ou Bairro";
+        dom.cartDeliveryFeeText.className = "font-medium text-zinc-400";
+      }
+    }
+  }
+
+  const grandTotal = subtotal + currentDeliveryFee;
+  dom.cartTotalText.textContent = formatBRL(grandTotal);
+}
+
+/**
+ * Consulta CEP via ViaCEP e preenche endereço automaticamente
+ */
+async function searchAddressByCep() {
+  if (!dom.inputCep) return;
+  const rawCep = dom.inputCep.value;
+  const cleanCep = rawCep.replace(/\D/g, "");
+
+  if (cleanCep.length !== 8) {
+    if (dom.cepFeedback) {
+      dom.cepFeedback.textContent = "Digite os 8 dígitos do CEP";
+      dom.cepFeedback.className = "text-[11px] font-medium text-rose-400";
+    }
+    return;
+  }
+
+  if (dom.cepFeedback) {
+    dom.cepFeedback.textContent = "Buscando endereço...";
+    dom.cepFeedback.className = "text-[11px] font-medium text-amber-400 animate-pulse";
+  }
+
+  if (dom.btnSearchCep) dom.btnSearchCep.disabled = true;
+
+  try {
+    const res = await lookupCEP(cleanCep);
+
+    if (res.success) {
+      if (dom.inputStreet && res.street) dom.inputStreet.value = res.street;
+      if (dom.inputNeighborhood && res.neighborhood) dom.inputNeighborhood.value = res.neighborhood;
+      if (dom.inputCity && res.city) dom.inputCity.value = `${res.city} - ${res.uf}`;
+
+      if (dom.cepFeedback) {
+        dom.cepFeedback.textContent = `✓ Frete: ${formatBRL(res.fee)}`;
+        dom.cepFeedback.className = "text-[11px] font-bold text-emerald-400";
+      }
+
+      showToast(`CEP localizado! Frete: ${formatBRL(res.fee)} (${res.neighborhood || res.city})`);
+
+      // Foca automaticamente no número da residência
+      if (dom.inputNumber) {
+        dom.inputNumber.focus();
+      }
+
+      updateDeliveryFeeDisplay();
+    } else {
+      if (dom.cepFeedback) {
+        dom.cepFeedback.textContent = res.error || "CEP não encontrado";
+        dom.cepFeedback.className = "text-[11px] font-medium text-rose-400";
+      }
+      showToast(res.error || "CEP não encontrado. Preencha o endereço manualmente.", "error");
+    }
+  } catch (err) {
+    console.error("Erro na busca de CEP:", err);
+  } finally {
+    if (dom.btnSearchCep) dom.btnSearchCep.disabled = false;
+  }
+}
+
+/**
+ * Toca efeito sonoro suave de confirmação de pedido via Web Audio API
+ */
+function playSuccessChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = "sine";
+    osc2.type = "triangle";
+
+    osc1.frequency.setValueAtTime(523.25, now); // C5
+    osc1.frequency.setValueAtTime(659.25, now + 0.12); // E5
+    osc1.frequency.setValueAtTime(783.99, now + 0.24); // G5
+    osc1.frequency.setValueAtTime(1046.50, now + 0.36); // C6
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+    osc1.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.9);
+  } catch (e) {
+    // Falha silenciosa se áudio bloqueado
+  }
 }
 
 /**
@@ -664,6 +818,7 @@ function setupEventListeners() {
 
     dom.deliveryAddressFields.classList.remove("hidden");
     dom.pickupInfoCard.classList.add("hidden");
+    updateDeliveryFeeDisplay();
   });
 
   dom.deliveryTypePickup.addEventListener("click", () => {
@@ -675,6 +830,7 @@ function setupEventListeners() {
 
     dom.deliveryAddressFields.classList.add("hidden");
     dom.pickupInfoCard.classList.remove("hidden");
+    updateDeliveryFeeDisplay();
   });
 
   // Formas de Pagamento
@@ -704,6 +860,35 @@ function setupEventListeners() {
     }
   });
 
+  // Máscara e busca automática de CEP
+  if (dom.inputCep) {
+    dom.inputCep.addEventListener("input", (e) => {
+      e.target.value = formatCEPMask(e.target.value);
+      const clean = e.target.value.replace(/\D/g, "");
+      if (clean.length === 8) {
+        searchAddressByCep();
+      }
+    });
+
+    dom.inputCep.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        searchAddressByCep();
+      }
+    });
+  }
+
+  if (dom.btnSearchCep) {
+    dom.btnSearchCep.addEventListener("click", searchAddressByCep);
+  }
+
+  // Se digitar o bairro manualmente, atualiza o frete imediatamente
+  if (dom.inputNeighborhood) {
+    dom.inputNeighborhood.addEventListener("input", () => {
+      updateDeliveryFeeDisplay();
+    });
+  }
+
   // Máscara para WhatsApp
   dom.inputCustomerPhone.addEventListener("input", (e) => {
     let v = e.target.value.replace(/\D/g, "");
@@ -717,8 +902,23 @@ function setupEventListeners() {
     }
   });
 
-  // Finalizar Pedido via WhatsApp
+  // Finalizar Pedido Diretamente no Firestore
   dom.submitOrderBtn.addEventListener("click", handleCheckoutSubmit);
+
+  // Ações do Modal de Sucesso
+  if (dom.btnTrackWhatsApp) {
+    dom.btnTrackWhatsApp.addEventListener("click", () => {
+      if (lastCreatedOrder) {
+        sendOrderToWhatsApp(lastCreatedOrder);
+      }
+    });
+  }
+
+  if (dom.btnCloseSuccessModal) {
+    dom.btnCloseSuccessModal.addEventListener("click", () => {
+      closeOrderSuccessModal();
+    });
+  }
 
   // Fechar modais ao teclar ESC
   document.addEventListener("keydown", (e) => {
@@ -727,16 +927,18 @@ function setupEventListeners() {
         closeProductModal();
       } else if (!dom.cartDrawer.classList.contains("hidden")) {
         closeCartDrawer();
+      } else if (dom.orderSuccessModal && !dom.orderSuccessModal.classList.contains("pointer-events-none")) {
+        closeOrderSuccessModal();
       }
     }
   });
 }
 
 /**
- * Valida dados e submete pedido para o WhatsApp
+ * Valida dados e submete pedido para gravação direta no Firestore
  */
-function handleCheckoutSubmit() {
-  const { items } = getCartState();
+async function handleCheckoutSubmit() {
+  const { items, subtotal } = getCartState();
   if (items.length === 0) {
     showToast("Adicione ao menos um item à sacola para pedir.", "error");
     return;
@@ -752,16 +954,18 @@ function handleCheckoutSubmit() {
     customerName: dom.inputCustomerName.value,
     customerPhone: dom.inputCustomerPhone.value,
     deliveryType: isDelivery ? "delivery" : "retirada",
+    cep: dom.inputCep ? dom.inputCep.value : "",
     street: dom.inputStreet.value,
     number: dom.inputNumber.value,
     neighborhood: dom.inputNeighborhood.value,
+    city: dom.inputCity ? dom.inputCity.value : "Cotia - SP",
     complement: dom.inputComplement.value,
     paymentMethod,
     needChange: dom.toggleNeedChange.checked ? "sim" : "nao",
     changeFor: dom.inputChangeFor.value
   };
 
-  const validation = validateCheckoutForm(formData);
+  const validation = validateCheckoutForm(formData, currentDeliveryFee);
 
   if (!validation.isValid) {
     const firstErrorMessage = Object.values(validation.errors)[0];
@@ -778,10 +982,100 @@ function handleCheckoutSubmit() {
     return;
   }
 
-  // Enviar pedido
-  sendOrderToWhatsApp(formData);
-  showToast("Redirecionando para o WhatsApp... 🚀");
-  closeCartDrawer();
+  // Estado de carregamento do botão
+  dom.submitOrderBtn.disabled = true;
+  if (dom.submitBtnText) dom.submitBtnText.textContent = "Gravando Pedido... ⏳";
+  if (dom.submitBtnIcon) dom.submitBtnIcon.textContent = "⚡";
+
+  try {
+    const result = await processAndSaveOrder(formData, currentDeliveryFee);
+
+    if (result.success && result.order) {
+      lastCreatedOrder = result.order;
+      showToast(`Pedido #${result.order.numero} confirmado e enviado à cozinha! 🚀`);
+      playSuccessChime();
+
+      // Fecha o drawer do carrinho
+      closeCartDrawer();
+
+      // Abre o modal de sucesso com todos os detalhes
+      openOrderSuccessModal(result.order);
+    } else {
+      const err = result.errors ? Object.values(result.errors)[0] : "Falha ao gravar pedido.";
+      showToast(err, "error");
+    }
+  } catch (err) {
+    console.error("Erro no checkout:", err);
+    showToast("Ocorreu um erro ao processar seu pedido. Tente novamente.", "error");
+  } finally {
+    dom.submitOrderBtn.disabled = false;
+    if (dom.submitBtnText) dom.submitBtnText.textContent = "Confirmar Pedido";
+    if (dom.submitBtnIcon) dom.submitBtnIcon.textContent = "🚀";
+  }
+}
+
+/**
+ * Abre o modal de sucesso com os detalhes do pedido recém-criado
+ */
+function openOrderSuccessModal(order) {
+  if (!dom.orderSuccessModal) return;
+
+  if (dom.successOrderNumber) {
+    dom.successOrderNumber.textContent = `#${order.numero}`;
+  }
+
+  if (dom.successOrderSummary) {
+    const isDelivery = order.tipo === "delivery";
+    const paymentLabel = order.pagamento.metodo === "pix"
+      ? "Pix"
+      : order.pagamento.metodo === "cartao"
+      ? "Cartão (Maquininha)"
+      : `Dinheiro ${order.pagamento.trocoPara ? `(Troco p/ R$ ${order.pagamento.trocoPara.toFixed(2)})` : ""}`;
+
+    dom.successOrderSummary.innerHTML = `
+      <div class="flex justify-between border-b border-zinc-800 pb-1.5">
+        <span class="text-zinc-400">Cliente:</span>
+        <span class="font-bold text-zinc-100">${escapeHTML(order.cliente.nome)}</span>
+      </div>
+      <div class="flex justify-between border-b border-zinc-800 pb-1.5">
+        <span class="text-zinc-400">Modalidade:</span>
+        <span class="font-bold text-amber-400">${isDelivery ? "🛵 Entrega em Domicílio" : "🏬 Retirada no Balcão"}</span>
+      </div>
+      ${isDelivery ? `
+        <div class="flex justify-between border-b border-zinc-800 pb-1.5">
+          <span class="text-zinc-400">Endereço:</span>
+          <span class="text-zinc-200 text-right">${escapeHTML(order.cliente.rua)}, Nº ${escapeHTML(order.cliente.numero)} - ${escapeHTML(order.cliente.bairro)}</span>
+        </div>
+      ` : `
+        <div class="flex justify-between border-b border-zinc-800 pb-1.5">
+          <span class="text-zinc-400">Retirada em:</span>
+          <span class="text-zinc-200 text-right font-medium">${escapeHTML(STORE_CONFIG.address)}</span>
+        </div>
+      `}
+      <div class="flex justify-between border-b border-zinc-800 pb-1.5">
+        <span class="text-zinc-400">Pagamento:</span>
+        <span class="font-semibold text-zinc-200">${paymentLabel}</span>
+      </div>
+      <div class="flex justify-between text-sm font-black pt-1">
+        <span class="text-white">Total do Pedido:</span>
+        <span class="text-amber-400 font-black">${formatBRL(order.total)}</span>
+      </div>
+    `;
+  }
+
+  dom.orderSuccessModal.classList.remove("opacity-0", "pointer-events-none");
+  const modalBox = dom.orderSuccessModal.querySelector("div");
+  if (modalBox) modalBox.classList.remove("scale-95");
+}
+
+/**
+ * Fecha o modal de sucesso do pedido
+ */
+function closeOrderSuccessModal() {
+  if (!dom.orderSuccessModal) return;
+  dom.orderSuccessModal.classList.add("opacity-0", "pointer-events-none");
+  const modalBox = dom.orderSuccessModal.querySelector("div");
+  if (modalBox) modalBox.classList.add("scale-95");
 }
 
 /**

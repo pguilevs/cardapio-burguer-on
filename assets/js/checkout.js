@@ -1,15 +1,17 @@
 /**
  * Cardápio Digital Interativo - Burguer On Artesanal
- * Módulo de Validação de Checkout e Integração com WhatsApp
+ * Módulo de Validação de Checkout, Frete e Gravação no Firestore
  */
 
 import { STORE_CONFIG, formatBRL } from "./products.js";
 import { getCartState, clearCart } from "./cart.js";
+import { calculateDeliveryFee } from "./shipping.js";
+import { createOrder, generateNextOrderNumber } from "./firebase-config.js";
 
 /**
  * Valida os dados do formulário de checkout
  */
-export function validateCheckoutForm(formData) {
+export function validateCheckoutForm(formData, customFreight = null) {
   const errors = {};
 
   if (!formData.customerName || formData.customerName.trim().length < 2) {
@@ -26,32 +28,151 @@ export function validateCheckoutForm(formData) {
       errors.street = "Informe o nome da rua ou avenida.";
     }
     if (!formData.number || formData.number.trim().length < 1) {
-      errors.number = "Informe o número.";
+      errors.number = "Informe o número da residência.";
     }
     if (!formData.neighborhood || formData.neighborhood.trim().length < 2) {
-      errors.neighborhood = "Informe o bairro.";
+      errors.neighborhood = "Informe o bairro para cálculo de entrega.";
     }
   }
 
+  const { subtotal } = getCartState();
+  let freight = 0;
+  if (formData.deliveryType === "delivery") {
+    if (customFreight !== null && typeof customFreight === "number") {
+      freight = customFreight;
+    } else if (formData.neighborhood) {
+      freight = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia").fee;
+    }
+  }
+  const total = subtotal + freight;
+
   if (formData.paymentMethod === "dinheiro" && formData.needChange === "sim") {
-    const changeVal = parseFloat((formData.changeFor || "").replace(/\./g, "").replace(",", "."));
-    const { subtotal } = getCartState();
-    if (isNaN(changeVal) || changeVal <= subtotal) {
-      errors.changeFor = `O valor para troco deve ser maior que o total do pedido (${formatBRL(subtotal)}).`;
+    const rawChange = (formData.changeFor || "").toString().replace(/\./g, "").replace(",", ".");
+    const changeVal = parseFloat(rawChange);
+    if (isNaN(changeVal) || changeVal <= total) {
+      errors.changeFor = `O valor para troco deve ser maior que o total do pedido (${formatBRL(total)}).`;
     }
   }
 
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
+    freight,
+    total
   };
 }
 
 /**
- * Formata a mensagem completa do pedido para envio via WhatsApp
+ * Processa a validação e salva o pedido diretamente no Firestore (e canal KDS em tempo real)
+ * Sem depender de envio manual pelo WhatsApp
+ * @param {Object} formData 
+ * @param {number|null} explicitFreight 
+ * @returns {Promise<{ success: boolean, order?: Object, errors?: Object }>}
  */
-export function buildWhatsAppMessage(orderData) {
+/**
+ * Formata o objeto de pedido para gravação no Firestore
+ */
+export function formatOrderPayload(formData, cartState, explicitFreight = null, forcedOrderNumber = null) {
+  const { items, subtotal } = cartState || getCartState();
+  let freight = 0;
+  if (formData.deliveryType === "delivery") {
+    if (explicitFreight !== null && typeof explicitFreight === "number") {
+      freight = explicitFreight;
+    } else {
+      const feeRes = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia");
+      freight = feeRes.fee || 0;
+    }
+  }
+
+  const total = Number(((subtotal || 0) + freight).toFixed(2));
+  const orderNumber = forcedOrderNumber || generateNextOrderNumber();
+
+  let trocoPara = null;
+  if (formData.paymentMethod === "dinheiro" && formData.needChange === "sim" && formData.changeFor) {
+    const rawChange = formData.changeFor.toString().replace(/\./g, "").replace(",", ".");
+    const parsed = parseFloat(rawChange);
+    if (!isNaN(parsed)) trocoPara = parsed;
+  }
+
+  return {
+    numero: orderNumber,
+    tipo: formData.deliveryType || "delivery",
+    status: "pendente",
+    impresso: false,
+    cliente: {
+      nome: (formData.customerName || "").trim(),
+      telefone: (formData.customerPhone || "").trim(),
+      cep: formData.cep ? formData.cep.trim() : "",
+      rua: formData.street ? formData.street.trim() : "",
+      numero: formData.number ? formData.number.trim() : "",
+      bairro: formData.neighborhood ? formData.neighborhood.trim() : "",
+      cidade: formData.city ? formData.city.trim() : "Cotia",
+      complemento: formData.complement ? formData.complement.trim() : ""
+    },
+    itens: (items || []).map(item => ({
+      cartItemId: item.cartItemId,
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: Number((item.unitPrice || 0).toFixed(2)),
+      totalPrice: Number((item.totalPrice || 0).toFixed(2)),
+      extras: (item.extras || []).map(e => ({ name: e.name, price: Number(e.price) })),
+      observations: item.observations ? item.observations.trim() : ""
+    })),
+    subtotal: Number((subtotal || 0).toFixed(2)),
+    frete: Number(freight.toFixed(2)),
+    total,
+    pagamento: {
+      metodo: formData.paymentMethod || "pix",
+      trocoPara
+    }
+  };
+}
+
+export async function processAndSaveOrder(formData, explicitFreight = null) {
+  const validation = validateCheckoutForm(formData, explicitFreight);
+  if (!validation.isValid) {
+    return {
+      success: false,
+      errors: validation.errors
+    };
+  }
+
   const { items, subtotal } = getCartState();
+  if (!items || items.length === 0) {
+    return {
+      success: false,
+      errors: { general: "Sua sacola está vazia." }
+    };
+  }
+
+  const orderPayload = formatOrderPayload(formData, { items, subtotal }, explicitFreight);
+
+  try {
+    const result = await createOrder(orderPayload);
+    // Limpa a sacola após gravação com sucesso
+    clearCart();
+
+    return {
+      success: true,
+      order: {
+        ...orderPayload,
+        id: result.id
+      }
+    };
+  } catch (err) {
+    console.error("Erro ao salvar pedido:", err);
+    return {
+      success: false,
+      errors: { general: "Ocorreu um erro ao processar seu pedido. Tente novamente." }
+    };
+  }
+}
+
+/**
+ * Formata a mensagem completa do pedido para envio opcional via WhatsApp
+ */
+export function buildWhatsAppMessage(orderData, explicitFreight = null, forcedOrderNumber = null) {
   const dateStr = new Date().toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -62,20 +183,27 @@ export function buildWhatsAppMessage(orderData) {
 
   const lines = [];
 
-  lines.push("🍔 *NOVO PEDIDO - BURGUER ON*");
+  const orderNum = orderData.numero || forcedOrderNumber;
+  const numStr = orderNum ? ` #${orderNum}` : "";
+  lines.push(`🍔 *PEDIDO${numStr} - BURGUER ON*`);
   lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
-  lines.push(`*Cliente:* ${orderData.customerName.trim()}`);
-  lines.push(`*Telefone:* ${orderData.customerPhone.trim()}`);
-  lines.push(
-    `*Tipo:* ${orderData.deliveryType === "delivery" ? "🛵 Entrega (Delivery)" : "🏬 Retirada no Local"}`
-  );
+  lines.push(`*Cliente:* ${(orderData.cliente?.nome || orderData.customerName || "").trim()}`);
+  lines.push(`*Telefone:* ${(orderData.cliente?.telefone || orderData.customerPhone || "").trim()}`);
+  
+  const isDelivery = (orderData.tipo || orderData.deliveryType) === "delivery";
+  lines.push(`*Tipo:* ${isDelivery ? "🛵 Entrega (Delivery)" : "🏬 Retirada no Local"}`);
 
-  if (orderData.deliveryType === "delivery") {
-    lines.push(
-      `*Endereço:* ${orderData.street.trim()}, Nº ${orderData.number.trim()} - ${orderData.neighborhood.trim()}`
-    );
-    if (orderData.complement && orderData.complement.trim()) {
-      lines.push(`*Complemento/Ref:* ${orderData.complement.trim()}`);
+  if (isDelivery) {
+    const c = orderData.cliente || orderData;
+    const rua = c.rua || c.street || "";
+    const numero = c.numero || c.number || "";
+    const bairro = c.bairro || c.neighborhood || "";
+    const compl = c.complemento || c.complement || "";
+    const cep = c.cep ? ` (${c.cep})` : "";
+    
+    lines.push(`*Endereço:* ${rua}, Nº ${numero} - ${bairro}${cep}`);
+    if (compl) {
+      lines.push(`*Complemento/Ref:* ${compl}`);
     }
   } else {
     lines.push(`*Local de Retirada:* ${STORE_CONFIG.address}`);
@@ -84,6 +212,7 @@ export function buildWhatsAppMessage(orderData) {
   lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
   lines.push("*Itens:*");
 
+  const items = orderData.itens || getCartState().items;
   items.forEach((item) => {
     lines.push(`- ${item.quantity}x ${item.name} (${formatBRL(item.totalPrice)})`);
 
@@ -102,27 +231,41 @@ export function buildWhatsAppMessage(orderData) {
 
   // Forma de Pagamento
   let paymentText = "";
-  if (orderData.paymentMethod === "pix") {
+  const payMethod = orderData.pagamento?.metodo || orderData.paymentMethod;
+  const troco = orderData.pagamento?.trocoPara || orderData.changeFor;
+
+  if (payMethod === "pix") {
     paymentText = "Pix (enviarei o comprovante a seguir)";
-  } else if (orderData.paymentMethod === "cartao") {
+  } else if (payMethod === "cartao") {
     paymentText = "Cartão (Débito/Crédito na maquininha)";
-  } else if (orderData.paymentMethod === "dinheiro") {
-    if (orderData.needChange === "sim" && orderData.changeFor) {
-      paymentText = `Dinheiro (Troco para R$ ${orderData.changeFor.trim()})`;
+  } else if (payMethod === "dinheiro") {
+    if (troco) {
+      paymentText = `Dinheiro (Troco para R$ ${troco})`;
     } else {
       paymentText = "Dinheiro (Não precisa de troco)";
     }
   }
   lines.push(`*Forma de Pagamento:* ${paymentText}`);
 
-  lines.push(`*Subtotal:* ${formatBRL(subtotal)}`);
-  if (orderData.deliveryType === "delivery") {
-    lines.push(`*Taxa de Entrega:* A confirmar`);
+  const subtotal = orderData.subtotal ?? getCartState().subtotal;
+  let frete = 0;
+  if (isDelivery) {
+    if (orderData.frete !== undefined) {
+      frete = Number(orderData.frete);
+    } else if (explicitFreight !== null) {
+      frete = Number(explicitFreight);
+    }
   }
-  lines.push(`*Total:* ${formatBRL(subtotal)}`);
+  const total = orderData.total ?? (subtotal + frete);
+
+  lines.push(`*Subtotal:* ${formatBRL(subtotal)}`);
+  if (isDelivery) {
+    lines.push(`*Taxa de Entrega:* ${frete > 0 ? formatBRL(frete) : "Grátis"}`);
+  }
+  lines.push(`*Total:* ${formatBRL(total)}`);
   lines.push("━━━━━━━━━━━━━━━━━━━━━━━━");
-  lines.push(`🕒 *Pedido realizado em:* ${dateStr}`);
-  lines.push("\n_Olá! Acabei de montar meu pedido pelo cardápio digital e gostaria de confirmar._ 😊");
+  lines.push(`🕒 *Realizado em:* ${dateStr}`);
+  lines.push("\n_Olá! Meu pedido já foi registrado no sistema e gostaria de acompanhar o preparo._ 😊");
 
   return lines.join("\n");
 }
@@ -135,11 +278,6 @@ export function sendOrderToWhatsApp(orderData) {
   const encodedMessage = encodeURIComponent(message);
   const whatsappUrl = `https://api.whatsapp.com/send?phone=${STORE_CONFIG.whatsappNumber}&text=${encodedMessage}`;
 
-  // Abre em nova aba / aplicativo oficial
   window.open(whatsappUrl, "_blank");
-
-  // Opcional: Limpar o carrinho após envio bem-sucedido
-  clearCart();
-
   return true;
 }
