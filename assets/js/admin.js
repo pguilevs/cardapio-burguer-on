@@ -355,7 +355,19 @@ function renderOrderCard(order) {
   }
 
   const cleanPhone = (cli.telefone || "").replace(/\D/g, "");
-  const zapLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=Ol%C3%A1%20${encodeURIComponent(cli.nome || "")}%2C%20tudo%20bem%3F%20Aqui%20%C3%A9%20da%20Burguer%20On%20referente%20ao%20seu%20pedido%20%23${order.numero}!` : "#";
+  let whatsMsg = "";
+  if (order.status === "pendente" || order.status === "preparo") {
+    whatsMsg = `Olá, ${cli.nome || "Cliente"}! Tudo bem? 😊\n\nRecebemos o seu pedido *#${order.numero}* aqui na *Burguer On Artesanal*!\nJá estamos preparando seu pedido com todo capricho na chapa. 🔥🍔\n\nQualquer dúvida, estamos à disposição por aqui!`;
+  } else if (order.status === "entrega") {
+    if (isDelivery) {
+      whatsMsg = `Olá, ${cli.nome || "Cliente"}! 🛵\n\nSeu pedido *#${order.numero}* da *Burguer On Artesanal* acabou de sair para entrega!\nEm breve o nosso motoboy chegará ao seu endereço. Bom apetite! 🍔😋`;
+    } else {
+      whatsMsg = `Olá, ${cli.nome || "Cliente"}! 🥡\n\nSeu pedido *#${order.numero}* da *Burguer On Artesanal* já está pronto e embalado aguardando sua retirada no balcão!\nPode vir retirar quando quiser.`;
+    }
+  } else {
+    whatsMsg = `Olá, ${cli.nome || "Cliente"}! Seu pedido *#${order.numero}* foi concluído com sucesso. Agradecemos pela preferência na *Burguer On Artesanal*! Volte sempre! 🍔❤️`;
+  }
+  const zapLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(whatsMsg)}` : "#";
 
   return `
     <div class="kds-order-card status-${order.status}" id="card-${order.id}">
@@ -375,7 +387,7 @@ function renderOrderCard(order) {
         <div class="customer-name">
           <span>👤 ${cli.nome || "Cliente"}</span>
           ${cleanPhone ? `
-            <a href="${zapLink}" target="_blank" rel="noopener" class="customer-phone-link">
+            <a href="${zapLink}" target="_blank" rel="noopener" class="customer-phone-link" title="Abrir WhatsApp do cliente">
               📱 ${cli.telefone}
             </a>
           ` : ""}
@@ -418,6 +430,11 @@ function renderOrderCard(order) {
 
       <div class="card-actions">
         ${actionButtonsHtml}
+        ${cleanPhone ? `
+          <a href="${zapLink}" target="_blank" rel="noopener" class="btn-card-action btn-action-whatsapp" title="Enviar mensagem no WhatsApp do cliente">
+            💬 Enviar no Whats
+          </a>
+        ` : ""}
         <button class="btn-card-action btn-action-print ${order.impresso ? 'printed' : ''}" data-action="print" data-id="${order.id}">
           🖨️ ${order.impresso ? "Reimprimir" : "Imprimir (80mm)"}
         </button>

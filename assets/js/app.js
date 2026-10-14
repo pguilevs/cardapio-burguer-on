@@ -984,9 +984,10 @@ function setupEventListeners() {
   // Ações do Modal de Sucesso
   if (dom.btnTrackWhatsApp) {
     dom.btnTrackWhatsApp.addEventListener("click", () => {
-      if (lastCreatedOrder) {
-        sendOrderToWhatsApp(lastCreatedOrder);
-      }
+      // Abre o WhatsApp da hamburgueria diretamente sem enviar mensagem de pedido
+      const cleanStorePhone = (STORE_CONFIG.whatsappNumber || "5511913219550").replace(/\D/g, "");
+      const whatsappUrl = `https://wa.me/${cleanStorePhone}`;
+      window.open(whatsappUrl, "_blank");
     });
   }
 

@@ -636,6 +636,18 @@ body {
   background: #059669;
 }
 
+.btn-action-whatsapp {
+  background: #25d366;
+  color: #0d1117 !important;
+  font-weight: 800;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+.btn-action-whatsapp:hover {
+  background: #20ba5a;
+  color: #000 !important;
+}
+
 .btn-action-print {
   background: var(--kds-surface-light);
   color: var(--kds-text);
