@@ -173,10 +173,19 @@ function buildThermalReceiptHTML(order) {
 
   const pag = order.pagamento || {};
   let pagDetalhes = `FORMA: ${(pag.metodo || "pix").toUpperCase()}`;
-  if (pag.metodo === "dinheiro" && pag.trocoPara) {
-    const totalNum = Number(order.total || 0);
-    const trocoLevar = (Number(pag.trocoPara) - totalNum).toFixed(2).replace(".", ",");
-    pagDetalhes += `<br>Troco para: R$ ${Number(pag.trocoPara).toFixed(2).replace(".", ",")} (Levar: R$ ${trocoLevar})`;
+  if (pag.metodo === "dinheiro") {
+    if (pag.precisaTroco || pag.trocoPara) {
+      const trocoNum = parseFloat(pag.trocoPara);
+      if (!isNaN(trocoNum) && trocoNum > 0) {
+        const totalNum = Number(order.total || 0);
+        const trocoLevar = (trocoNum - totalNum).toFixed(2).replace(".", ",");
+        pagDetalhes += `<br>Troco para: R$ ${trocoNum.toFixed(2).replace(".", ",")} (Levar: R$ ${trocoLevar})`;
+      } else {
+        pagDetalhes += `<br><strong>⚠️ LEVAR TROCO (Cliente precisa de troco)</strong>`;
+      }
+    } else {
+      pagDetalhes += `<br>Não precisa de troco`;
+    }
   }
 
   const dataHora = order.dataHoraFormatada || new Date().toLocaleString("pt-BR");
@@ -305,8 +314,17 @@ function renderOrderCard(order) {
 
   const pag = order.pagamento || {};
   let pagInfo = `Pagamento: <strong>${(pag.metodo || "pix").toUpperCase()}</strong>`;
-  if (pag.metodo === "dinheiro" && pag.trocoPara) {
-    pagInfo += ` (Troco p/ R$ ${Number(pag.trocoPara).toFixed(2).replace(".", ",")})`;
+  if (pag.metodo === "dinheiro") {
+    if (pag.precisaTroco || pag.trocoPara) {
+      const trocoNum = parseFloat(pag.trocoPara);
+      if (!isNaN(trocoNum) && trocoNum > 0) {
+        pagInfo += ` (Troco p/ R$ ${trocoNum.toFixed(2).replace(".", ",")})`;
+      } else {
+        pagInfo += ` <strong>(Precisa de troco)</strong>`;
+      }
+    } else {
+      pagInfo += ` (Sem troco)`;
+    }
   }
 
   // Ações baseadas no status

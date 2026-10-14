@@ -1,11 +1,11 @@
 /**
  * Módulo de Consulta de CEP, Cálculo de Distância e Frete Dinâmico
  * Burguer On Artesanal - Cotia / SP
- * Regra: Distância máxima de entrega permitida: 15 km
+ * Regra: Distância máxima de entrega permitida: 20 km
  */
 
 // Limite máximo de distância para entregas (em km)
-export const MAX_DELIVERY_DISTANCE_KM = 15;
+export const MAX_DELIVERY_DISTANCE_KM = 20;
 
 // Localização da loja de referência
 export const STORE_ORIGIN = {
@@ -34,34 +34,34 @@ export const LOCATION_DISTANCES = {
   "jardim rio das pedras": { distanceKm: 4.5, fee: 8.50 },
   "jardim coimbra": { distanceKm: 5.0, fee: 8.50 },
 
-  // Cotia - Bairros Médios (Granja Viana e adjacências - dentro de 15 km)
+  // Cotia - Bairros Médios (Granja Viana e adjacências)
   "granja viana": { distanceKm: 11.5, fee: 14.00 },
   "jardim da gloria": { distanceKm: 12.0, fee: 14.00 },
   "fazendinha": { distanceKm: 13.0, fee: 14.00 },
 
-  // Cotia - Distrito de Caucaia do Alto (distância ~19.5 km > 15 km: NÃO ENTREGÁVEL)
-  "caucaia do alto": { distanceKm: 19.5, fee: 0 },
-  "caucaia": { distanceKm: 19.5, fee: 0 },
+  // Cotia - Distrito de Caucaia do Alto (distância ~19.5 km <= 20 km: ENTREGÁVEL)
+  "caucaia do alto": { distanceKm: 19.5, fee: 16.00 },
+  "caucaia": { distanceKm: 19.5, fee: 16.00 },
 
-  // Cidades Vizinhas Autorizadas (dentro do limite de 15 km)
+  // Cidades Vizinhas Autorizadas (dentro do limite de 20 km)
   "itapevi": { distanceKm: 8.5, fee: 15.00 },
   "jandira": { distanceKm: 11.0, fee: 15.00 },
   "vargem grande paulista": { distanceKm: 12.5, fee: 15.00 },
   "vargem grande": { distanceKm: 12.5, fee: 15.00 },
+  "carapicuiba": { distanceKm: 16.5, fee: 15.00 },
+  "barueri": { distanceKm: 17.5, fee: 15.00 },
+  "alphaville": { distanceKm: 18.0, fee: 15.00 },
+  "embu das artes": { distanceKm: 17.0, fee: 15.00 },
+  "taboao da serra": { distanceKm: 19.0, fee: 15.00 },
 
-  // Cidades Vizinhas que Ultrapassam 15 km da loja (BLOQUEADAS)
-  "carapicuiba": { distanceKm: 16.5, fee: 0 },
-  "barueri": { distanceKm: 17.5, fee: 0 },
-  "alphaville": { distanceKm: 18.0, fee: 0 },
-  "embu das artes": { distanceKm: 17.0, fee: 0 },
-  "taboao da serra": { distanceKm: 19.0, fee: 0 },
+  // Cidades que Ultrapassam 20 km da loja (BLOQUEADAS)
   "osasco": { distanceKm: 21.0, fee: 0 },
   "sao paulo": { distanceKm: 25.0, fee: 0 },
   "sao roque": { distanceKm: 28.0, fee: 0 },
   "ibiuna": { distanceKm: 35.0, fee: 0 }
 };
 
-// Tabela de frete por bairro / região legado mantida para compatibilidade
+// Tabela de frete por bairro / região
 export const SHIPPING_RATES = {
   "moinho velho": 5.00,
   "jardim rosemary": 6.00,
@@ -72,6 +72,8 @@ export const SHIPPING_RATES = {
   "centro": 8.00,
   "centro de cotia": 8.00,
   "granja viana": 14.00,
+  "caucaia do alto": 16.00,
+  "caucaia": 16.00,
   "padrao_cotia": 8.50,
   "outras_cidades": 15.00
 };
@@ -103,7 +105,7 @@ export function estimateDistanceKm(neighborhood, city = "Cotia", rawCep = "") {
 
   // 1. Verificação por CEP
   if (cleanCep.length === 8) {
-    // Caucaia do Alto (CEPs 06725-xxx a 06729-xxx)
+    // Caucaia do Alto (CEPs 06725-xxx a 06729-xxx) - ~19.5 km
     const cepNum = parseInt(cleanCep, 10);
     if (cepNum >= 6725000 && cepNum <= 6729999) {
       return 19.5;
@@ -115,10 +117,10 @@ export function estimateDistanceKm(neighborhood, city = "Cotia", rawCep = "") {
     // Barueri / Alphaville (06400-xxx a 06549-xxx)
     if (cleanCep.startsWith("064") || cleanCep.startsWith("065")) return 17.5;
 
-    // Osasco (06000-xxx a 06299-xxx)
+    // Osasco (06000-xxx a 06299-xxx) - > 20 km
     if (cleanCep.startsWith("060") || cleanCep.startsWith("061") || cleanCep.startsWith("062")) return 21.0;
 
-    // São Paulo Capital (01000-xxx a 05999-xxx)
+    // São Paulo Capital (01000-xxx a 05999-xxx) - > 20 km
     if (cepNum < 6000000) return 25.0;
 
     // Outras cidades / estados
@@ -134,7 +136,7 @@ export function estimateDistanceKm(neighborhood, city = "Cotia", rawCep = "") {
         return info.distanceKm;
       }
     }
-    // Qualquer outra cidade desconhecida fora de Cotia/Itapevi/Vargem/Jandira
+    // Qualquer outra cidade desconhecida muito distante
     return 25.0;
   }
 
@@ -151,7 +153,8 @@ export function estimateDistanceKm(neighborhood, city = "Cotia", rawCep = "") {
 }
 
 /**
- * Calcula a taxa de entrega e verifica se está dentro do limite de 15 km
+ * Calcula a taxa de entrega e verifica se está dentro do limite de 20 km
+ * Retorna apenas o valor e status de entrega, sem poluir com km
  * @param {string} neighborhood - Bairro informado
  * @param {string} city - Cidade informada (padrão Cotia)
  * @param {string} deliveryType - "delivery" ou "retirada"
@@ -188,29 +191,28 @@ export function calculateDeliveryFee(neighborhood, city = "Cotia", deliveryType 
       isDeliverable: false,
       maxDistanceKm: MAX_DELIVERY_DISTANCE_KM,
       label: "Informe o CEP ou bairro",
-      message: "Por favor, informe seu CEP ou bairro para cálculo de frete."
+      message: "Por favor, informe seu CEP ou bairro para verificar a entrega."
     };
   }
 
   const distanceKm = estimateDistanceKm(neighborhood, city, rawCep);
 
-  // REGRA MÁXIMA: Se a distância for superior a 15 km, NÃO PODE REALIZAR ENTREGA
+  // REGRA MÁXIMA: Se a distância for superior a 20 km, NÃO PODE REALIZAR ENTREGA
   if (distanceKm > MAX_DELIVERY_DISTANCE_KM) {
-    const distFormat = distanceKm.toFixed(1).replace(".", ",");
     return {
       fee: 0,
       distanceKm,
       isDeliverable: false,
       maxDistanceKm: MAX_DELIVERY_DISTANCE_KM,
-      label: "Entrega Indisponível (> 15 km)",
-      message: `Desculpe! O endereço informado fica a aproximadamente ~${distFormat} km da hamburgueria, ultrapassando nosso limite máximo de entrega de ${MAX_DELIVERY_DISTANCE_KM} km. Não é possível realizar a entrega para esta distância. Selecione a opção "Retirada no Local" para retirar seu pedido no balcão.`
+      label: "Entrega Indisponível (Fora da área de atendimento)",
+      message: `Desculpe! O endereço informado está fora do nosso raio de entrega (máximo de ${MAX_DELIVERY_DISTANCE_KM} km). Não realizamos entregas para esta localidade. Selecione a opção "Retirada no Local" para retirar seu pedido no balcão.`
     };
   }
 
-  // Se estiver dentro dos 15 km, calcula a taxa correspondente
+  // Se estiver dentro dos 20 km, calcula a taxa correspondente
   let fee = SHIPPING_RATES.padrao_cotia; // R$ 8,50 padrão
 
-  // Verifica se a cidade é vizinha autorizada (Itapevi, Vargem Grande, Jandira)
+  // Verifica se a cidade é vizinha autorizada
   if (normCity && !normCity.includes("cotia")) {
     fee = SHIPPING_RATES.outras_cidades; // R$ 15,00
   } else {
@@ -225,13 +227,13 @@ export function calculateDeliveryFee(neighborhood, city = "Cotia", deliveryType 
     }
   }
 
-  const distFormat = distanceKm.toFixed(1).replace(".", ",");
+  // Retorna apenas o valor em reais, sem a informação de km
   return {
     fee,
     distanceKm,
     isDeliverable: true,
     maxDistanceKm: MAX_DELIVERY_DISTANCE_KM,
-    label: `R$ ${fee.toFixed(2).replace(".", ",")} (~${distFormat} km)`,
+    label: `R$ ${fee.toFixed(2).replace(".", ",")}`,
     message: ""
   };
 }
@@ -251,7 +253,7 @@ export function formatCEPMask(value) {
 
 /**
  * Consulta o endereço e frete via API pública do ViaCEP
- * Valida se o CEP está dentro do raio máximo de 15 km
+ * Valida se o CEP está dentro do raio máximo de 20 km
  * @param {string} rawCep - CEP com ou sem pontuação
  * @returns {Promise<{
  *   success: boolean,
@@ -297,7 +299,7 @@ export async function lookupCEP(rawCep) {
     const city = data.localidade || "Cotia";
     const uf = data.uf || "SP";
 
-    // Se o estado não for SP, distância excede muito os 15 km
+    // Se o estado não for SP, distância excede muito os 20 km
     if (uf.toUpperCase() !== "SP") {
       return {
         success: true,
@@ -306,10 +308,10 @@ export async function lookupCEP(rawCep) {
         city,
         uf,
         fee: 0,
-        feeLabel: "Indisponível (> 15 km)",
+        feeLabel: "Indisponível (Fora da área de entrega)",
         distanceKm: 50.0,
         isDeliverable: false,
-        deliveryMessage: `Entrega indisponível para o estado ${uf}. A hamburgueria realiza entregas somente em Cotia e região até 15 km.`
+        deliveryMessage: `Entrega indisponível para o estado ${uf}. A hamburgueria realiza entregas somente em Cotia e região (até ${MAX_DELIVERY_DISTANCE_KM} km).`
       };
     }
 

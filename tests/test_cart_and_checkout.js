@@ -90,13 +90,14 @@ state = getCartState();
 assert(state.items[0].quantity === 2, "Quantidade incrementada para 2");
 assert(Math.abs(state.subtotal - 95.96) < 0.01, "Subtotal duplicado corretamente");
 
-// 3. Testes do Módulo de CEP e Frete Regional de Cotia (Raio Máximo: 15 km)
+// 3. Testes do Módulo de CEP e Frete Regional de Cotia (Raio Máximo: 20 km)
 assert(formatCEPMask("06716040") === "06716-040", "Máscara de CEP com 8 dígitos formatada corretamente");
 assert(formatCEPMask("06716") === "06716", "Máscara de CEP incompleta tratada");
 
-// Entregas autorizadas (distância <= 15 km)
+// Entregas autorizadas (distância <= 20 km)
 const moinho = calculateDeliveryFee("Moinho Velho", "Cotia", "delivery");
 assert(moinho.fee === 5.00 && moinho.isDeliverable === true, "Frete Moinho Velho R$ 5,00 (dentro do limite)");
+assert(!moinho.label.includes("km"), "Label de frete NÃO contém informação de km");
 
 const rosemary = calculateDeliveryFee("Jardim Rosemary", "Cotia", "delivery");
 assert(rosemary.fee === 6.00 && rosemary.isDeliverable === true, "Frete Jardim Rosemary R$ 6,00 (dentro do limite)");
@@ -117,33 +118,34 @@ const padraoCotia = calculateDeliveryFee("Bairro Não Mapeado", "Cotia", "delive
 assert(padraoCotia.fee === 8.50 && padraoCotia.isDeliverable === true, "Frete Padrão Cotia R$ 8,50 (dentro do limite)");
 
 const itapevi = calculateDeliveryFee("Centro", "Itapevi", "delivery");
-assert(itapevi.fee === 15.00 && itapevi.isDeliverable === true, "Frete Itapevi R$ 15,00 (dentro do limite de 15 km)");
+assert(itapevi.fee === 15.00 && itapevi.isDeliverable === true, "Frete Itapevi R$ 15,00 (dentro do limite de 20 km)");
 
 const vargemGrande = calculateDeliveryFee("Centro", "Vargem Grande Paulista", "delivery");
-assert(vargemGrande.fee === 15.00 && vargemGrande.isDeliverable === true, "Frete Vargem Grande Paulista R$ 15,00 (dentro do limite de 15 km)");
+assert(vargemGrande.fee === 15.00 && vargemGrande.isDeliverable === true, "Frete Vargem Grande Paulista R$ 15,00 (dentro do limite de 20 km)");
 
 const jandira = calculateDeliveryFee("Centro", "Jandira", "delivery");
-assert(jandira.fee === 15.00 && jandira.isDeliverable === true, "Frete Jandira R$ 15,00 (dentro do limite de 15 km)");
+assert(jandira.fee === 15.00 && jandira.isDeliverable === true, "Frete Jandira R$ 15,00 (dentro do limite de 20 km)");
+
+// Novas regiões autorizadas com o limite aumentado para 20 km
+const caucaia = calculateDeliveryFee("Caucaia do Alto", "Cotia", "delivery");
+assert(caucaia.fee === 16.00 && caucaia.isDeliverable === true, "Caucaia do Alto (~19.5 km <= 20 km) agora é ENTREGÁVEL");
+
+const carapicuiba = calculateDeliveryFee("Centro", "Carapicuíba", "delivery");
+assert(carapicuiba.fee === 15.00 && carapicuiba.isDeliverable === true, "Carapicuíba (~16.5 km <= 20 km) agora é ENTREGÁVEL");
+
+const barueri = calculateDeliveryFee("Alphaville", "Barueri", "delivery");
+assert(barueri.fee === 15.00 && barueri.isDeliverable === true, "Barueri / Alphaville (~17.5 km <= 20 km) agora é ENTREGÁVEL");
 
 const retirada = calculateDeliveryFee("Moinho Velho", "Cotia", "retirada");
 assert(retirada.fee === 0.00 && retirada.isDeliverable === true, "Frete Retirada no Local R$ 0,00 (sempre permitido)");
 
-// BLOQUEIO OBRIGATÓRIO: Distâncias superiores a 15 km NÃO podem realizar entrega
-const caucaia = calculateDeliveryFee("Caucaia do Alto", "Cotia", "delivery");
-assert(caucaia.isDeliverable === false && caucaia.fee === 0, "Caucaia do Alto (~19.5 km > 15 km) bloqueado para entrega");
-assert(caucaia.message.includes("15 km"), "Mensagem de Caucaia do Alto menciona limite de 15 km");
-
-const carapicuiba = calculateDeliveryFee("Centro", "Carapicuíba", "delivery");
-assert(carapicuiba.isDeliverable === false, "Carapicuíba (> 15 km) bloqueado para entrega");
-
-const barueri = calculateDeliveryFee("Alphaville", "Barueri", "delivery");
-assert(barueri.isDeliverable === false, "Barueri / Alphaville (> 15 km) bloqueado para entrega");
-
+// BLOQUEIO OBRIGATÓRIO: Distâncias superiores a 20 km NÃO podem realizar entrega
 const osasco = calculateDeliveryFee("Centro", "Osasco", "delivery");
-assert(osasco.isDeliverable === false, "Osasco (> 15 km) bloqueado para entrega");
+assert(osasco.isDeliverable === false, "Osasco (~21 km > 20 km) bloqueado para entrega");
+assert(osasco.message.includes("20 km"), "Mensagem de Osasco menciona limite de 20 km");
 
 const saoPaulo = calculateDeliveryFee("Pinheiros", "São Paulo", "delivery");
-assert(saoPaulo.isDeliverable === false, "São Paulo Capital (> 15 km) bloqueado para entrega");
+assert(saoPaulo.isDeliverable === false, "São Paulo Capital (~25 km > 20 km) bloqueado para entrega");
 
 // 4. Testes de Validação do Checkout
 const formInvalido = {
@@ -161,20 +163,30 @@ assert(valInvalida.errors.customerName !== undefined, "Erro no nome detectado");
 assert(valInvalida.errors.customerPhone !== undefined, "Erro no telefone detectado");
 assert(valInvalida.errors.street !== undefined, "Erro na rua detectado");
 
-// Formulário com endereço além de 15 km DEVE ser rejeitado para entrega
+// Formulário com endereço além de 20 km DEVE ser rejeitado para entrega
 const formDistanteBloqueado = {
-  customerName: "Lucas Morador de Caucaia",
+  customerName: "Mariana de Osasco",
   customerPhone: "(11) 98888-7777",
   deliveryType: "delivery",
-  street: "Estrada de Caucaia",
-  number: "500",
-  neighborhood: "Caucaia do Alto",
-  city: "Cotia",
+  street: "Avenida dos Autonomistas",
+  number: "1000",
+  neighborhood: "Centro",
+  city: "Osasco",
   paymentMethod: "pix"
 };
 const valDistante = validateCheckoutForm(formDistanteBloqueado);
-assert(!valDistante.isValid, "Formulário com distância > 15 km rejeitado para delivery");
+assert(!valDistante.isValid, "Formulário com distância > 20 km rejeitado para delivery");
 assert(valDistante.errors.delivery !== undefined, "Erro explícito de limite de entrega gerado");
+
+// Morador de Osasco (> 20 km) escolhendo Retirada no Local DEVE ser aceito
+const formOsascoRetirada = {
+  customerName: "Mariana de Osasco",
+  customerPhone: "(11) 98888-7777",
+  deliveryType: "retirada",
+  paymentMethod: "pix"
+};
+const valOsascoRetirada = validateCheckoutForm(formOsascoRetirada);
+assert(valOsascoRetirada.isValid, "Morador de Osasco aceito para Retirada no Local");
 
 const formValidoDelivery = {
   customerName: "Carlos Silva",
@@ -191,27 +203,28 @@ const formValidoDelivery = {
 const valValidaDelivery = validateCheckoutForm(formValidoDelivery);
 assert(valValidaDelivery.isValid, "Formulário de delivery válido aceito com sucesso");
 
-// Morador de Caucaia (> 15 km) escolhendo Retirada no Local DEVE ser aceito
-const formCaucaiaRetirada = {
-  customerName: "Lucas Morador de Caucaia",
-  customerPhone: "(11) 98888-7777",
-  deliveryType: "retirada",
-  paymentMethod: "pix"
-};
-const valCaucaiaRetirada = validateCheckoutForm(formCaucaiaRetirada);
-assert(valCaucaiaRetirada.isValid, "Morador de Caucaia aceito para Retirada no Local");
-
-// 5. Teste de Retirada no Local
-const formValidoRetirada = {
-  customerName: "Mariana Souza",
+// 5. Testes de Troco em Dinheiro: SEM limites, sem erros bloqueantes
+const formTrocoSemValor = {
+  customerName: "João Pedro",
   customerPhone: "(11) 91234-5678",
   deliveryType: "retirada",
   paymentMethod: "dinheiro",
   needChange: "sim",
-  changeFor: "120,00"
+  changeFor: "" // Sem valor digitado
 };
-const valValidaRetirada = validateCheckoutForm(formValidoRetirada);
-assert(valValidaRetirada.isValid, "Formulário de retirada aceito sem exigir endereço residencial");
+const valTrocoSemValor = validateCheckoutForm(formTrocoSemValor);
+assert(valTrocoSemValor.isValid, "Cliente marcando que precisa de troco SEM valor é aceito sem erro");
+
+const formTrocoValorQualquer = {
+  customerName: "João Pedro",
+  customerPhone: "(11) 91234-5678",
+  deliveryType: "retirada",
+  paymentMethod: "dinheiro",
+  needChange: "sim",
+  changeFor: "5,00" // Mesmo menor que o lanche, não deve haver bloqueio
+};
+const valTrocoValorQualquer = validateCheckoutForm(formTrocoValorQualquer);
+assert(valTrocoValorQualquer.isValid, "Cliente com troco não é bloqueado por limite de valor");
 
 // 6. Teste da Estrutura do Pedido para Firestore
 const payload = formatOrderPayload(formValidoDelivery, state, 5.00, "1005");
@@ -225,6 +238,11 @@ assert(payload.cliente.bairro === "Moinho Velho", "Bairro do cliente preservado"
 assert(payload.itens.length === 1, "Itens do carrinho presentes no payload");
 assert(Math.abs(payload.total - (state.subtotal + 5.00)) < 0.01, "Total do pedido é subtotal + frete");
 
+// Teste de payload com troco sem valor especificado
+const payloadTrocoSemValor = formatOrderPayload(formTrocoSemValor, state, 0, "1006");
+assert(payloadTrocoSemValor.pagamento.precisaTroco === true, "Payload registra precisaTroco = true");
+assert(payloadTrocoSemValor.pagamento.trocoPara === "Sim (levar troco)", "Payload define trocoPara padrão legível");
+
 // 7. Teste da Mensagem Opcional de WhatsApp
 const msg = buildWhatsAppMessage(formValidoDelivery, 5.00, "1005");
 assert(msg.includes("🍔 *PEDIDO #1005 - BURGUER ON*"), "Título do pedido com número presente na mensagem");
@@ -234,6 +252,10 @@ assert(msg.includes("+ Adicional: Bacon"), "Adicional presente");
 assert(msg.includes("Obs: Sem tomate"), "Observação presente");
 assert(msg.includes("*Forma de Pagamento:* Pix"), "Forma de pagamento presente");
 assert(msg.includes("*Taxa de Entrega:*") && msg.includes("5,00"), "Taxa de entrega presente no WhatsApp");
+
+// Teste do WhatsApp com troco
+const msgTroco = buildWhatsAppMessage(payloadTrocoSemValor, 0, "1006");
+assert(msgTroco.includes("Dinheiro (Precisa de troco)"), "WhatsApp exibe 'Dinheiro (Precisa de troco)' claramente sem erro");
 
 console.log("\n================================================");
 console.log(`TOTAL: ${passed} passaram, ${failed} falharam.`);

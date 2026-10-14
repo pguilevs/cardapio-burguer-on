@@ -650,10 +650,10 @@ function updateDeliveryFeeDisplay() {
       const res = calculateDeliveryFee(neighborhood, city, "delivery", rawCep);
 
       if (!res.isDeliverable) {
-        // ULTRAPASSOU 15 KM: ENTREGA PROIBIDA
+        // ULTRAPASSOU 20 KM: ENTREGA PROIBIDA
         currentDeliveryFee = 0;
         if (dom.cartDeliveryFeeText) {
-          dom.cartDeliveryFeeText.textContent = "Indisponível (> 15 km)";
+          dom.cartDeliveryFeeText.textContent = "Indisponível (> 20 km)";
           dom.cartDeliveryFeeText.className = "font-bold text-rose-400";
         }
 
@@ -667,7 +667,7 @@ function updateDeliveryFeeDisplay() {
         if (dom.submitOrderBtn) {
           dom.submitOrderBtn.disabled = true;
           dom.submitOrderBtn.classList.add("opacity-50", "cursor-not-allowed");
-          if (dom.submitBtnText) dom.submitBtnText.textContent = "Entrega Indisponível (> 15 km)";
+          if (dom.submitBtnText) dom.submitBtnText.textContent = "Entrega Indisponível (> 20 km)";
         }
       } else {
         // DENTRO DE 15 KM: ENTREGA AUTORIZADA
@@ -739,16 +739,16 @@ async function searchAddressByCep() {
 
       if (res.isDeliverable) {
         if (dom.cepFeedback) {
-          dom.cepFeedback.textContent = `✓ Frete: ${formatBRL(res.fee)} (~${res.distanceKm.toFixed(1).replace(".", ",")} km)`;
+          dom.cepFeedback.textContent = `✓ Frete: ${formatBRL(res.fee)} (Entrega disponível)`;
           dom.cepFeedback.className = "text-[11px] font-bold text-emerald-400";
         }
         showToast(`CEP localizado! Frete: ${formatBRL(res.fee)} (${res.neighborhood || res.city})`);
       } else {
         if (dom.cepFeedback) {
-          dom.cepFeedback.textContent = `⚠️ Distância > 15 km (~${res.distanceKm.toFixed(1).replace(".", ",")} km) - Não entregamos nesta distância`;
+          dom.cepFeedback.textContent = `⚠️ Fora da área de atendimento - Não realizamos entregas nesta localidade`;
           dom.cepFeedback.className = "text-[11px] font-bold text-rose-400";
         }
-        showToast(`Endereço a ~${res.distanceKm.toFixed(1).replace(".", ",")} km da loja! Entregas apenas até 15 km. Selecione 'Retirada no Local'.`, "warning");
+        showToast(`Endereço fora da nossa área de atendimento (limite de 20 km). Selecione 'Retirada no Local'.`, "warning");
       }
 
       // Foca automaticamente no número da residência
@@ -909,12 +909,13 @@ function setupEventListeners() {
     });
   });
 
+  const changeInputWrapper = document.getElementById("change-input-wrapper");
   dom.toggleNeedChange.addEventListener("change", (e) => {
     if (e.target.checked) {
-      dom.inputChangeFor.parentElement.classList.remove("hidden");
+      if (changeInputWrapper) changeInputWrapper.classList.remove("hidden");
     } else {
-      dom.inputChangeFor.parentElement.classList.add("hidden");
-      dom.inputChangeFor.value = "";
+      if (changeInputWrapper) changeInputWrapper.classList.add("hidden");
+      if (dom.inputChangeFor) dom.inputChangeFor.value = "";
     }
   });
 
@@ -1052,7 +1053,6 @@ async function handleCheckoutSubmit() {
     else if (validation.errors.street) dom.inputStreet.focus();
     else if (validation.errors.number) dom.inputNumber.focus();
     else if (validation.errors.neighborhood) dom.inputNeighborhood.focus();
-    else if (validation.errors.changeFor) dom.inputChangeFor.focus();
 
     return;
   }
@@ -1101,11 +1101,22 @@ function openOrderSuccessModal(order) {
 
   if (dom.successOrderSummary) {
     const isDelivery = order.tipo === "delivery";
-    const paymentLabel = order.pagamento.metodo === "pix"
-      ? "Pix"
-      : order.pagamento.metodo === "cartao"
-      ? "Cartão (Maquininha)"
-      : `Dinheiro ${order.pagamento.trocoPara ? `(Troco p/ R$ ${order.pagamento.trocoPara.toFixed(2)})` : ""}`;
+    let paymentLabel = "Pix";
+    if (order.pagamento.metodo === "cartao") {
+      paymentLabel = "Cartão (Maquininha)";
+    } else if (order.pagamento.metodo === "dinheiro") {
+      if (order.pagamento.precisaTroco) {
+        if (typeof order.pagamento.trocoPara === "number" && order.pagamento.trocoPara > 0) {
+          paymentLabel = `Dinheiro (Troco para R$ ${order.pagamento.trocoPara.toFixed(2).replace(".", ",")})`;
+        } else if (order.pagamento.trocoPara && order.pagamento.trocoPara !== "Sim (levar troco)") {
+          paymentLabel = `Dinheiro (Troco para ${order.pagamento.trocoPara})`;
+        } else {
+          paymentLabel = "Dinheiro (Precisa de troco)";
+        }
+      } else {
+        paymentLabel = "Dinheiro (Não precisa de troco)";
+      }
+    }
 
     dom.successOrderSummary.innerHTML = `
       <div class="flex justify-between border-b border-zinc-800 pb-1.5">

@@ -556,14 +556,14 @@
                 />
               </div>
 
-              <!-- Alerta de Distância Superior a 15 km (Entrega Bloqueada) -->
+              <!-- Alerta de Distância Superior a 20 km (Entrega Bloqueada) -->
               <div id="delivery-distance-alert" class="hidden p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs space-y-2">
                 <div class="flex items-center gap-1.5 font-bold text-rose-400">
                   <span class="text-sm">⚠️</span>
-                  <span id="distance-alert-title">Entrega Indisponível (Acima de 15 km)</span>
+                  <span id="distance-alert-title">Entrega Indisponível (Acima de 20 km)</span>
                 </div>
                 <p id="distance-alert-msg" class="text-[11px] leading-relaxed text-zinc-300">
-                  Desculpe! O endereço informado fica a mais de 15 km da loja. Realizamos entregas em um raio máximo de até 15 km.
+                  Desculpe! O endereço informado fica a mais de 20 km da loja. Realizamos entregas em um raio máximo de até 20 km.
                 </p>
                 <button
                   id="btn-switch-pickup-alert"
@@ -610,8 +610,8 @@
                 <input type="checkbox" id="toggle-need-change" class="rounded text-amber-500 focus:ring-amber-500" />
                 <span>Precisa de troco?</span>
               </label>
-              <div class="hidden">
-                <label for="input-change-for" class="block text-[11px] text-zinc-400 mb-1">Troco para quanto?</label>
+              <div id="change-input-wrapper" class="hidden">
+                <label for="input-change-for" class="block text-[11px] text-zinc-400 mb-1">Troco para quanto? <span class="text-zinc-500 font-normal">(opcional)</span></label>
                 <div class="relative">
                   <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-zinc-400 font-bold">R$</span>
                   <input

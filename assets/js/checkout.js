@@ -35,7 +35,7 @@ export function validateCheckoutForm(formData, customFreight = null) {
     } else {
       const deliveryInfo = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia", "delivery", formData.cep);
       if (!deliveryInfo.isDeliverable) {
-        errors.delivery = deliveryInfo.message || "A entrega está indisponível para distâncias acima de 15 km da loja. Por favor, selecione 'Retirada no Local'.";
+        errors.delivery = deliveryInfo.message || "A entrega está indisponível para distâncias acima de 20 km da loja. Por favor, selecione 'Retirada no Local'.";
       }
     }
   }
@@ -52,14 +52,7 @@ export function validateCheckoutForm(formData, customFreight = null) {
   }
   const total = subtotal + freight;
 
-  if (formData.paymentMethod === "dinheiro" && formData.needChange === "sim") {
-    const rawChange = (formData.changeFor || "").toString().replace(/\./g, "").replace(",", ".");
-    const changeVal = parseFloat(rawChange);
-    if (isNaN(changeVal) || changeVal <= total) {
-      errors.changeFor = `O valor para troco deve ser maior que o total do pedido (${formatBRL(total)}).`;
-    }
-  }
-
+  // Se o cliente marcou que precisa de troco em dinheiro, apenas registra sem bloquear com limites
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -90,10 +83,18 @@ export function formatOrderPayload(formData, cartState, explicitFreight = null, 
   const orderNumber = forcedOrderNumber || generateNextOrderNumber();
 
   let trocoPara = null;
-  if (formData.paymentMethod === "dinheiro" && formData.needChange === "sim" && formData.changeFor) {
-    const rawChange = formData.changeFor.toString().replace(/\./g, "").replace(",", ".");
-    const parsed = parseFloat(rawChange);
-    if (!isNaN(parsed)) trocoPara = parsed;
+  let precisaTroco = false;
+  if (formData.paymentMethod === "dinheiro") {
+    precisaTroco = formData.needChange === "sim" || formData.needChange === true;
+    if (precisaTroco) {
+      if (formData.changeFor && formData.changeFor.toString().trim() !== "") {
+        const rawChange = formData.changeFor.toString().replace(/\./g, "").replace(",", ".");
+        const parsed = parseFloat(rawChange);
+        trocoPara = !isNaN(parsed) ? parsed : formData.changeFor.toString().trim();
+      } else {
+        trocoPara = "Sim (levar troco)";
+      }
+    }
   }
 
   return {
@@ -127,6 +128,7 @@ export function formatOrderPayload(formData, cartState, explicitFreight = null, 
     total,
     pagamento: {
       metodo: formData.paymentMethod || "pix",
+      precisaTroco,
       trocoPara
     }
   };
@@ -141,14 +143,14 @@ export async function processAndSaveOrder(formData, explicitFreight = null) {
     };
   }
 
-  // Verificação de segurança: bloqueia entrega se for > 15 km
+  // Verificação de segurança: bloqueia entrega se for > 20 km
   if (formData.deliveryType === "delivery") {
     const deliveryInfo = calculateDeliveryFee(formData.neighborhood, formData.city || "Cotia", "delivery", formData.cep);
     if (!deliveryInfo.isDeliverable) {
       return {
         success: false,
         errors: {
-          delivery: deliveryInfo.message || "A entrega está indisponível para distâncias acima de 15 km. Por favor, selecione 'Retirada no Local'."
+          delivery: deliveryInfo.message || "A entrega está indisponível para distâncias acima de 20 km. Por favor, selecione 'Retirada no Local'."
         }
       };
     }
@@ -255,8 +257,13 @@ export function buildWhatsAppMessage(orderData, explicitFreight = null, forcedOr
   } else if (payMethod === "cartao") {
     paymentText = "Cartão (Débito/Crédito na maquininha)";
   } else if (payMethod === "dinheiro") {
-    if (troco) {
-      paymentText = `Dinheiro (Troco para R$ ${troco})`;
+    const precisaTroco = orderData.pagamento?.precisaTroco || orderData.needChange === "sim" || orderData.needChange === true;
+    if (precisaTroco) {
+      if (troco && troco !== "Sim (levar troco)") {
+        paymentText = `Dinheiro (Troco para R$ ${troco})`;
+      } else {
+        paymentText = "Dinheiro (Precisa de troco)";
+      }
     } else {
       paymentText = "Dinheiro (Não precisa de troco)";
     }
