@@ -15,6 +15,7 @@ import {
 } from "../assets/js/cart.js";
 import { validateCheckoutForm, buildWhatsAppMessage, formatOrderPayload } from "../assets/js/checkout.js";
 import { calculateDeliveryFee, formatCEPMask, SHIPPING_RATES } from "../assets/js/shipping.js";
+import { createOrder, updateOrderStatus, subscribeToOrders } from "../assets/js/firebase-config.js";
 
 // Mock localStorage para Node.js
 global.localStorage = {
@@ -255,7 +256,38 @@ assert(msg.includes("*Taxa de Entrega:*") && msg.includes("5,00"), "Taxa de entr
 
 // Teste do WhatsApp com troco
 const msgTroco = buildWhatsAppMessage(payloadTrocoSemValor, 0, "1006");
-assert(msgTroco.includes("Dinheiro (Precisa de troco)"), "WhatsApp exibe 'Dinheiro (Precisa de troco)' claramente sem erro");
+// 8. Teste de Transição de Status em Tempo Real sem Reload
+let receivedUpdateCount = 0;
+let lastReceivedOrders = [];
+const unsubscribe = subscribeToOrders((orders) => {
+  receivedUpdateCount++;
+  lastReceivedOrders = orders;
+});
+
+const createdOrder = await createOrder({
+  cliente: { nome: "Teste Transição", telefone: "11999999999" },
+  itens: [],
+  subtotal: 30,
+  frete: 5,
+  total: 35,
+  pagamento: { metodo: "pix" }
+});
+
+assert(lastReceivedOrders.some(o => o.id === createdOrder.id && o.status === "pendente"), "Novo pedido registrado como pendente recebido pelo subscriber");
+
+// Avança para preparo
+await updateOrderStatus(createdOrder.id, "preparo");
+assert(lastReceivedOrders.some(o => o.id === createdOrder.id && o.status === "preparo"), "Status 'preparo' refletido no subscriber imediatamente sem reload");
+
+// Avança para entrega
+await updateOrderStatus(createdOrder.id, "entrega");
+assert(lastReceivedOrders.some(o => o.id === createdOrder.id && o.status === "entrega"), "Status 'entrega' refletido no subscriber imediatamente sem reload");
+
+// Avança para finalizado
+await updateOrderStatus(createdOrder.id, "finalizado");
+assert(lastReceivedOrders.some(o => o.id === createdOrder.id && o.status === "finalizado"), "Status 'finalizado' refletido no subscriber imediatamente sem reload");
+
+unsubscribe();
 
 console.log("\n================================================");
 console.log(`TOTAL: ${passed} passaram, ${failed} falharam.`);

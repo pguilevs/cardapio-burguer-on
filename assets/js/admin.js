@@ -487,10 +487,22 @@ function setupEventListeners() {
     if (action === "status" && order) {
       const nextStatus = btn.dataset.next;
       btn.disabled = true;
-      btn.textContent = "Atualizando...";
-      await updateOrderStatus(orderId, nextStatus);
+
+      // 1. Atualização Otimista Imediata na tela (0ms de espera, sem precisar de recarregar a página)
+      order.status = nextStatus;
+      updateKdsDisplay();
+
+      // 2. Persistência assíncrona local, no canal entre abas e no Firestore
+      try {
+        await updateOrderStatus(orderId, nextStatus);
+      } catch (err) {
+        console.error("Erro ao persistir status do pedido:", err);
+      }
     } else if (action === "print" && order) {
+      order.impresso = true;
+      updateKdsDisplay();
       printOrderReceipt(order, false);
+      markOrderAsPrinted(order.id).catch(() => {});
     }
   });
 

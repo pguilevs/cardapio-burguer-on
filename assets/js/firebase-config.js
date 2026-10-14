@@ -41,6 +41,20 @@ try {
   console.warn("BroadcastChannel indisponível:", e);
 }
 
+// Gerenciador de inscritos locais ativos para sincronização imediata sem reload
+const activeOrderSubscribers = new Set();
+
+function notifyAllLocalSubscribers() {
+  const current = getLocalOrders();
+  activeOrderSubscribers.forEach((cb) => {
+    try {
+      cb(current);
+    } catch (err) {
+      console.warn("Erro ao notificar subscriber local:", err);
+    }
+  });
+}
+
 // Recupera a configuração ativa
 export function getActiveFirebaseConfig() {
   try {
@@ -211,6 +225,9 @@ export async function createOrder(orderData) {
     });
   }
 
+  // Notifica imediatamente os ouvintes na mesma aba
+  notifyAllLocalSubscribers();
+
   return {
     success: true,
     id: localId,
@@ -230,6 +247,7 @@ export async function updateOrderStatus(orderId, newStatus) {
     setLocalOrders(orders);
   }
 
+  // Notifica outras abas abertas
   if (localBroadcastChannel) {
     localBroadcastChannel.postMessage({
       type: "STATUS_UPDATE",
@@ -237,6 +255,9 @@ export async function updateOrderStatus(orderId, newStatus) {
       status: newStatus
     });
   }
+
+  // Notifica imediatamente ouvintes na mesma aba
+  notifyAllLocalSubscribers();
 
   // Tenta atualizar Firestore se disponível e não for apenas ID local
   if (db && firestoreInitialized && !orderId.startsWith("local_")) {
@@ -270,6 +291,9 @@ export async function markOrderAsPrinted(orderId) {
     });
   }
 
+  // Notifica imediatamente ouvintes na mesma aba
+  notifyAllLocalSubscribers();
+
   if (db && firestoreInitialized && !orderId.startsWith("local_")) {
     try {
       const docRef = doc(db, "pedidos", orderId);
@@ -288,6 +312,8 @@ export async function markOrderAsPrinted(orderId) {
  */
 export function subscribeToOrders(onOrdersUpdate) {
   let unsubscribeFirestore = null;
+
+  activeOrderSubscribers.add(onOrdersUpdate);
 
   // Emite o estado inicial local
   onOrdersUpdate(getLocalOrders());
@@ -343,6 +369,7 @@ export function subscribeToOrders(onOrdersUpdate) {
 
   // Retorna função de desinscrição
   return () => {
+    activeOrderSubscribers.delete(onOrdersUpdate);
     if (unsubscribeFirestore) unsubscribeFirestore();
     if (localBroadcastChannel) {
       localBroadcastChannel.removeEventListener("message", handleLocalMessage);
