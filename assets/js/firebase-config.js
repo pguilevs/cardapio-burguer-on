@@ -32,6 +32,27 @@ const LOCAL_CHANNEL_NAME = "burguer_on_orders_channel";
 const LOCAL_STORAGE_KEY = "burguer_on_orders_db";
 const ORDER_COUNTER_KEY = "burguer_on_order_counter";
 
+// Tópico em nuvem em tempo real (garante comunicação instantânea entre celular de clientes e notebook do restaurante)
+const CLOUD_SYNC_TOPIC = "burguer_on_cotia_live_orders_v1";
+const CLOUD_ENDPOINT = `https://ntfy.sh/${CLOUD_SYNC_TOPIC}`;
+
+async function broadcastToCloud(payload) {
+  try {
+    if (typeof fetch !== "undefined") {
+      await fetch(CLOUD_ENDPOINT, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: {
+          "Title": "Burguer On Pedido",
+          "Priority": "high"
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Aviso ao emitir para nuvem em tempo real:", err);
+  }
+}
+
 let localBroadcastChannel = null;
 try {
   if (typeof BroadcastChannel !== "undefined") {
@@ -228,6 +249,12 @@ export async function createOrder(orderData) {
   // Notifica imediatamente os ouvintes na mesma aba
   notifyAllLocalSubscribers();
 
+  // 4. Emite instantaneamente para a nuvem em tempo real (celular do cliente -> notebook do restaurante)
+  broadcastToCloud({
+    type: "NEW_ORDER",
+    order: newOrder
+  }).catch(() => {});
+
   return {
     success: true,
     id: localId,
@@ -258,6 +285,13 @@ export async function updateOrderStatus(orderId, newStatus) {
 
   // Notifica imediatamente ouvintes na mesma aba
   notifyAllLocalSubscribers();
+
+  // Emite atualização para a nuvem
+  broadcastToCloud({
+    type: "STATUS_UPDATE",
+    orderId,
+    status: newStatus
+  }).catch(() => {});
 
   // Tenta atualizar Firestore se disponível e não for apenas ID local
   if (db && firestoreInitialized && !orderId.startsWith("local_")) {
@@ -294,6 +328,13 @@ export async function markOrderAsPrinted(orderId) {
   // Notifica imediatamente ouvintes na mesma aba
   notifyAllLocalSubscribers();
 
+  // Emite atualização de impressão para a nuvem
+  broadcastToCloud({
+    type: "PRINT_UPDATE",
+    orderId,
+    impresso: true
+  }).catch(() => {});
+
   if (db && firestoreInitialized && !orderId.startsWith("local_")) {
     try {
       const docRef = doc(db, "pedidos", orderId);
@@ -329,7 +370,86 @@ export function subscribeToOrders(onOrdersUpdate) {
     localBroadcastChannel.addEventListener("message", handleLocalMessage);
   }
 
-  // 2. Escuta Firestore em tempo real
+  // 2. Escuta Nuvem em Tempo Real (Cross-Device: Celular do cliente ➡️ Notebook do restaurante)
+  let cloudEventSource = null;
+  if (typeof EventSource !== "undefined") {
+    try {
+      cloudEventSource = new EventSource(`${CLOUD_ENDPOINT}/sse`);
+      cloudEventSource.onmessage = (event) => {
+        try {
+          const raw = JSON.parse(event.data);
+          const payload = typeof raw.message === "string" ? JSON.parse(raw.message) : raw.message;
+          if (!payload) return;
+
+          if (payload.type === "NEW_ORDER" && payload.order) {
+            const current = getLocalOrders();
+            // Verifica se o pedido já não foi adicionado
+            if (!current.some(o => o.id === payload.order.id || (o.numero && o.numero === payload.order.numero))) {
+              current.unshift(payload.order);
+              if (current.length > 100) current.length = 100;
+              setLocalOrders(current);
+              onOrdersUpdate(current);
+            }
+          } else if (payload.type === "STATUS_UPDATE" && payload.orderId) {
+            const current = getLocalOrders();
+            const target = current.find(o => o.id === payload.orderId);
+            if (target && target.status !== payload.status) {
+              target.status = payload.status;
+              setLocalOrders(current);
+              onOrdersUpdate(current);
+            }
+          } else if (payload.type === "PRINT_UPDATE" && payload.orderId) {
+            const current = getLocalOrders();
+            const target = current.find(o => o.id === payload.orderId);
+            if (target && !target.impresso) {
+              target.impresso = true;
+              setLocalOrders(current);
+              onOrdersUpdate(current);
+            }
+          }
+        } catch (e) {
+          // Mensagem ignorada se não for JSON válido
+        }
+      };
+    } catch (err) {
+      console.warn("Aviso ao conectar SSE da nuvem:", err);
+    }
+  }
+
+  // 3. Busca pedidos recentes das últimas 24h na nuvem (caso o painel tenha sido aberto após os pedidos terem sido feitos)
+  if (typeof fetch !== "undefined") {
+    fetch(`${CLOUD_ENDPOINT}/json?poll=1&since=24h`)
+      .then(r => r.ok ? r.text() : "")
+      .then(text => {
+        if (!text) return;
+        const lines = text.trim().split("\n");
+        let hasChanges = false;
+        const current = getLocalOrders();
+
+        lines.forEach(line => {
+          if (!line) return;
+          try {
+            const raw = JSON.parse(line);
+            const payload = typeof raw.message === "string" ? JSON.parse(raw.message) : raw.message;
+            if (payload && payload.type === "NEW_ORDER" && payload.order) {
+              if (!current.some(o => o.id === payload.order.id || (o.numero && o.numero === payload.order.numero))) {
+                current.push(payload.order);
+                hasChanges = true;
+              }
+            }
+          } catch (e) {}
+        });
+
+        if (hasChanges) {
+          current.sort((a, b) => (b.criadoEmMs || 0) - (a.criadoEmMs || 0));
+          setLocalOrders(current);
+          onOrdersUpdate(current);
+        }
+      })
+      .catch(() => {});
+  }
+
+  // 4. Escuta Firestore em tempo real (se configurado com chaves do usuário)
   if (db && firestoreInitialized) {
     try {
       const q = query(collection(db, "pedidos"), orderBy("criadoEmMs", "desc"));
@@ -370,6 +490,9 @@ export function subscribeToOrders(onOrdersUpdate) {
   // Retorna função de desinscrição
   return () => {
     activeOrderSubscribers.delete(onOrdersUpdate);
+    if (cloudEventSource) {
+      cloudEventSource.close();
+    }
     if (unsubscribeFirestore) unsubscribeFirestore();
     if (localBroadcastChannel) {
       localBroadcastChannel.removeEventListener("message", handleLocalMessage);
