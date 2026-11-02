@@ -9,9 +9,10 @@ import {
   markOrderAsPrinted,
   createOrder,
   getLocalOrders,
-  getActiveFirebaseConfig,
-  saveCustomFirebaseConfig
-} from "./firebase-config.js";
+  getAdminSession,
+  signInAdmin,
+  signOutAdmin
+} from "./firebase-config.js?v=20261102b";
 
 // ==========================================================================
 // ESTADO DO PAINEL
@@ -23,6 +24,15 @@ let autoPrintEnabled = true;
 let isAlertRinging = false;
 let audioContext = null;
 let soundIntervalId = null;
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 // ==========================================================================
 // MOTOR DE ÁUDIO WEB AUDIO API (ALERTA SONORO CONTÍNUO DE COZINHA)
@@ -130,17 +140,17 @@ function stopPendingAlarm() {
 function buildThermalReceiptHTML(order) {
   const itensHtml = (order.itens || []).map(item => {
     const adicionaisTxt = (item.adicionais || [])
-      .map(ad => `<div class="rcpt-item-detail">+ ${ad.nome} (R$ ${Number(ad.preco || 0).toFixed(2).replace(".", ",")})</div>`)
+      .map(ad => `<div class="rcpt-item-detail">+ ${escapeHtml(ad.nome)} (R$ ${Number(ad.preco || 0).toFixed(2).replace(".", ",")})</div>`)
       .join("");
 
-    const obsTxt = item.observacao ? `<div class="rcpt-item-obs">OBS: ${item.observacao}</div>` : "";
+    const obsTxt = item.observacao ? `<div class="rcpt-item-obs">OBS: ${escapeHtml(item.observacao)}</div>` : "";
 
     const valorUnit = Number(item.precoTotal || item.preco || 0).toFixed(2).replace(".", ",");
 
     return `
       <div class="rcpt-item-row">
         <div class="rcpt-row">
-          <span class="rcpt-item-name">[${item.quantidade}x] ${item.nome}</span>
+          <span class="rcpt-item-name">[${item.quantidade}x] ${escapeHtml(item.nome)}</span>
           <span>R$ ${valorUnit}</span>
         </div>
         ${adicionaisTxt}
@@ -156,11 +166,11 @@ function buildThermalReceiptHTML(order) {
   if (isDelivery) {
     enderecoHtml = `
       <div class="rcpt-section-title">ENDEREÇO DE ENTREGA:</div>
-      <div>${cli.rua || ""}, Nº ${cli.numero || "S/N"}</div>
-      <div>Bairro: ${cli.bairro || ""} - ${cli.cidade || "Cotia - SP"}</div>
+      <div>${escapeHtml(cli.rua)}, Nº ${escapeHtml(cli.numero || "S/N")}</div>
+      <div>Bairro: ${escapeHtml(cli.bairro)} - ${escapeHtml(cli.cidade || "Cotia - SP")}</div>
       ${order.distanciaKm ? `<div>Distância da Loja: ~${Number(order.distanciaKm).toFixed(1).replace(".", ",")} km</div>` : ""}
-      ${cli.cep ? `<div>CEP: ${cli.cep}</div>` : ""}
-      ${cli.complemento ? `<div>Compl/Ref: ${cli.complemento}</div>` : ""}
+      ${cli.cep ? `<div>CEP: ${escapeHtml(cli.cep)}</div>` : ""}
+      ${cli.complemento ? `<div>Compl/Ref: ${escapeHtml(cli.complemento)}</div>` : ""}
       <div class="rcpt-divider"></div>
     `;
   } else {
@@ -214,8 +224,8 @@ function buildThermalReceiptHTML(order) {
     <div class="rcpt-divider"></div>
 
     <div class="rcpt-section-title">CLIENTE:</div>
-    <div style="font-size:13px; font-weight:900;">${cli.nome || "Não informado"}</div>
-    <div>Telefone: ${cli.telefone || "Não informado"}</div>
+    <div style="font-size:13px; font-weight:900;">${escapeHtml(cli.nome || "Não informado")}</div>
+    <div>Telefone: ${escapeHtml(cli.telefone || "Não informado")}</div>
 
     <div class="rcpt-divider"></div>
 
@@ -294,7 +304,7 @@ function renderOrderCard(order) {
 
   const itemsHtml = items.map(item => {
     const additionsHtml = (item.adicionais || []).map(ad => `
-      <span>+ ${ad.nome} (R$ ${Number(ad.preco || 0).toFixed(2).replace(".", ",")})</span>
+      <span>+ ${escapeHtml(ad.nome)} (R$ ${Number(ad.preco || 0).toFixed(2).replace(".", ",")})</span>
     `).join("");
 
     return `
@@ -302,12 +312,12 @@ function renderOrderCard(order) {
         <div class="item-main-row">
           <div class="item-qty-name">
             <span class="item-qty">${item.quantidade}x</span>
-            <span>${item.nome}</span>
+            <span>${escapeHtml(item.nome)}</span>
           </div>
           <span>R$ ${Number(item.precoTotal || item.preco || 0).toFixed(2).replace(".", ",")}</span>
         </div>
         ${additionsHtml ? `<div class="item-additions">${additionsHtml}</div>` : ""}
-        ${item.observacao ? `<div class="item-notes">OBS: ${item.observacao}</div>` : ""}
+        ${item.observacao ? `<div class="item-notes">OBS: ${escapeHtml(item.observacao)}</div>` : ""}
       </div>
     `;
   }).join("");
@@ -332,7 +342,7 @@ function renderOrderCard(order) {
   if (order.status === "pendente") {
     actionButtonsHtml = `
       <button class="btn-card-action btn-action-preparo" data-action="status" data-id="${order.id}" data-next="preparo">
-        👨‍🍳 Iniciar Preparo
+        👨‍🍳 Avançar: iniciar preparo
       </button>
     `;
   } else if (order.status === "preparo") {
@@ -345,7 +355,7 @@ function renderOrderCard(order) {
   } else if (order.status === "entrega") {
     actionButtonsHtml = `
       <button class="btn-card-action btn-action-finish" data-action="status" data-id="${order.id}" data-next="finalizado">
-        ✅ Concluir Pedido
+        ✅ Concluir pedido
       </button>
     `;
   } else {
@@ -370,7 +380,7 @@ function renderOrderCard(order) {
   const zapLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(whatsMsg)}` : "#";
 
   return `
-    <div class="kds-order-card status-${order.status}" id="card-${order.id}">
+    <div class="kds-order-card status-${escapeHtml(order.status)}" id="card-${escapeHtml(order.id)}">
       <div class="card-top">
         <span class="order-num-tag">#${order.numero || "0000"}</span>
         <span class="order-type-badge ${isDelivery ? 'badge-delivery' : 'badge-retirada'}">
@@ -379,25 +389,25 @@ function renderOrderCard(order) {
       </div>
 
       <div class="card-time-row">
-        <span>${order.dataHoraFormatada || ""}</span>
+        <span>${escapeHtml(order.dataHoraFormatada || "")}</span>
         <span class="time-elapsed">${formatMinutesAgo(order.criadoEmMs)}</span>
       </div>
 
       <div class="card-customer-info">
         <div class="customer-name">
-          <span>👤 ${cli.nome || "Cliente"}</span>
+          <span>👤 ${escapeHtml(cli.nome || "Cliente")}</span>
           ${cleanPhone ? `
             <a href="${zapLink}" target="_blank" rel="noopener" class="customer-phone-link" title="Abrir WhatsApp do cliente">
-              📱 ${cli.telefone}
+              📱 ${escapeHtml(cli.telefone)}
             </a>
           ` : ""}
         </div>
 
         ${isDelivery ? `
           <div class="customer-address">
-            📍 <strong>${cli.rua || ""}, Nº ${cli.numero || "S/N"}</strong><br>
-            Bairro: ${cli.bairro || ""} - Cotia/SP ${order.distanciaKm ? `<span style="color:#f59e0b; font-weight:700;">(~${Number(order.distanciaKm).toFixed(1).replace(".", ",")} km)</span>` : ""}<br>
-            ${cli.complemento ? `Ref: <em>${cli.complemento}</em>` : ""}
+            📍 <strong>${escapeHtml(cli.rua || "")}, Nº ${escapeHtml(cli.numero || "S/N")}</strong><br>
+            Bairro: ${escapeHtml(cli.bairro || "")} - ${escapeHtml(cli.cidade || "Cotia/SP")} ${order.distanciaKm ? `<span style="color:#f59e0b; font-weight:700;">(~${Number(order.distanciaKm).toFixed(1).replace(".", ",")} km)</span>` : ""}<br>
+            ${cli.complemento ? `Ref: <em>${escapeHtml(cli.complemento)}</em>` : ""}
           </div>
         ` : `
           <div class="customer-address" style="border-left-color: #818cf8;">
@@ -503,6 +513,7 @@ function setupEventListeners() {
 
     if (action === "status" && order) {
       const nextStatus = btn.dataset.next;
+      const previousStatus = order.status;
       btn.disabled = true;
 
       // 1. Atualização Otimista Imediata na tela (0ms de espera, sem precisar de recarregar a página)
@@ -512,14 +523,31 @@ function setupEventListeners() {
       // 2. Persistência assíncrona local, no canal entre abas e no Firestore
       try {
         await updateOrderStatus(orderId, nextStatus);
+        const statusLabels = {
+          preparo: "Pedido avançado para preparo.",
+          entrega: order.tipo === "delivery" ? "Pedido despachado para entrega." : "Pedido pronto para retirada.",
+          finalizado: "Pedido concluído com sucesso."
+        };
+        showAdminNotice(statusLabels[nextStatus] || "Etapa atualizada.");
       } catch (err) {
         console.error("Erro ao persistir status do pedido:", err);
+        order.status = previousStatus;
+        updateKdsDisplay();
+        showAdminNotice("Não foi possível salvar a etapa. Tente novamente.", true);
       }
     } else if (action === "print" && order) {
       order.impresso = true;
       updateKdsDisplay();
       printOrderReceipt(order, false);
       markOrderAsPrinted(order.id).catch(() => {});
+    }
+
+    function showAdminNotice(message, isError = false) {
+      const notice = document.createElement("div");
+      notice.className = `kds-action-notice ${isError ? "error" : ""}`;
+      notice.textContent = message;
+      document.body.appendChild(notice);
+      setTimeout(() => notice.remove(), 2800);
     }
   });
 
@@ -589,49 +617,6 @@ function setupEventListeners() {
       filterColumns(targetCol);
     });
   });
-
-  // Modal de Configurações do Firebase
-  const configBtn = document.getElementById("btn-settings");
-  const configModal = document.getElementById("settings-modal");
-  const closeModalBtn = document.getElementById("btn-close-settings");
-  const configForm = document.getElementById("firebase-config-form");
-
-  if (configBtn && configModal) {
-    configBtn.addEventListener("click", () => {
-      const current = getActiveFirebaseConfig();
-      const apiKeyEl = document.getElementById("fb-api-key");
-      const projIdEl = document.getElementById("fb-project-id");
-      if (apiKeyEl) apiKeyEl.value = current.apiKey || "";
-      if (projIdEl) projIdEl.value = current.projectId || "";
-      configModal.classList.remove("hidden");
-    });
-  }
-
-  if (closeModalBtn && configModal) {
-    closeModalBtn.addEventListener("click", () => {
-      configModal.classList.add("hidden");
-    });
-  }
-
-  if (configForm) {
-    configForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const apiKey = document.getElementById("fb-api-key").value.trim();
-      const projectId = document.getElementById("fb-project-id").value.trim();
-      if (projectId) {
-        saveCustomFirebaseConfig({
-          apiKey: apiKey || "custom_api_key",
-          authDomain: `${projectId}.firebaseapp.com`,
-          projectId: projectId,
-          storageBucket: `${projectId}.appspot.com`,
-          messagingSenderId: "123456789",
-          appId: "1:123456789:web:abcdef"
-        });
-        alert("Configuração do Firebase salva! Recarregando painel...");
-        window.location.reload();
-      }
-    });
-  }
 
   // Atualização periódica do tempo decorrido e relógio
   setInterval(updateClock, 1000);
@@ -714,27 +699,60 @@ async function createDemoOrder() {
 // ==========================================================================
 let previousOrdersCount = 0;
 
-document.addEventListener("DOMContentLoaded", () => {
-  setupEventListeners();
-  updateClock();
+document.addEventListener("DOMContentLoaded", async () => {
+  const login = document.getElementById("admin-login");
+  const loginForm = document.getElementById("admin-login-form");
+  const loginError = document.getElementById("admin-login-error");
 
-  // Inicia escuta em tempo real (Firestore + BroadcastChannel)
-  subscribeToOrders((orders) => {
-    const isFirstLoad = allOrders.length === 0;
-    
-    // Detecta se chegou um novo pedido pendente
-    if (!isFirstLoad && orders.length > previousOrdersCount) {
-      const newestOrder = orders[0];
-      if (newestOrder && newestOrder.status === "pendente") {
-        playRestaurantChime();
-        if (autoPrintEnabled && !newestOrder.impresso) {
-          printOrderReceipt(newestOrder, true);
+  const startPanel = () => {
+    if (login) login.classList.add("hidden");
+    setupEventListeners();
+    updateClock();
+
+    subscribeToOrders((orders) => {
+      const isFirstLoad = allOrders.length === 0;
+      if (!isFirstLoad && orders.length > previousOrdersCount) {
+        const newestOrder = orders[0];
+        if (newestOrder && newestOrder.status === "pendente") {
+          playRestaurantChime();
+          if (autoPrintEnabled && !newestOrder.impresso) {
+            printOrderReceipt(newestOrder, true);
+          }
         }
       }
-    }
 
-    allOrders = orders;
-    previousOrdersCount = orders.length;
-    updateKdsDisplay();
-  });
+      allOrders = orders;
+      previousOrdersCount = orders.length;
+      updateKdsDisplay();
+    });
+  };
+
+  try {
+    const session = await getAdminSession();
+    if (session) {
+      startPanel();
+    } else if (login) {
+      login.classList.remove("hidden");
+    }
+  } catch (error) {
+    if (loginError) loginError.textContent = "Configure o Supabase antes de acessar o painel.";
+    if (login) login.classList.remove("hidden");
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      loginError.textContent = "";
+      try {
+        await signInAdmin(
+          document.getElementById("admin-email").value.trim(),
+          document.getElementById("admin-password").value
+        );
+        startPanel();
+      } catch (error) {
+        loginError.textContent = "E-mail ou senha inválidos.";
+        console.error("Falha no login do painel:", error);
+      }
+    });
+  }
 });

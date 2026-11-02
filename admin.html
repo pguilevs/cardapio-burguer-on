@@ -10,6 +10,24 @@
 </head>
 <body>
 
+  <section id="admin-login" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Acesso ao painel</h2>
+      <p id="admin-login-error" style="color:#f87171; min-height:1.2rem;"></p>
+      <form id="admin-login-form">
+        <div class="form-group">
+          <label for="admin-email">E-mail</label>
+          <input id="admin-email" class="form-control" type="email" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="admin-password">Senha</label>
+          <input id="admin-password" class="form-control" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn-ctrl active-sound" type="submit" style="width:100%; justify-content:center;">Entrar</button>
+      </form>
+    </div>
+  </section>
+
   <!-- CABEÇALHO KDS -->
   <header class="kds-header">
     <div class="kds-brand">
@@ -43,10 +61,6 @@
 
       <button id="btn-demo-order" class="btn-ctrl" title="Simular novo pedido no sistema">
         ⚡ Pedido Teste
-      </button>
-
-      <button id="btn-settings" class="btn-ctrl" title="Configurar Firebase Firestore">
-        ⚙️ Config
       </button>
 
       <a href="index.html" class="btn-ctrl btn-back-menu" title="Voltar para a página de vendas">
@@ -129,36 +143,16 @@
 
   </main>
 
-  <!-- MODAL DE CONFIGURAÇÃO DO FIREBASE -->
-  <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Configuração do Firebase Firestore</h2>
-        <button id="btn-close-settings" class="btn-close-modal">&times;</button>
-      </div>
-      <form id="firebase-config-form">
-        <p style="font-size:0.8rem; color:#8b949e; margin-bottom:1rem;">
-          O sistema já possui sincronização local em tempo real entre abas e suporte à CDN do Firebase. Para usar seu projeto do Google Cloud / Firebase Console, informe abaixo:
-        </p>
-        <div class="form-group">
-          <label for="fb-project-id">Firebase Project ID</label>
-          <input type="text" id="fb-project-id" class="form-control" placeholder="ex: burguer-on-cotia" required>
-        </div>
-        <div class="form-group">
-          <label for="fb-api-key">API Key</label>
-          <input type="text" id="fb-api-key" class="form-control" placeholder="AIzaSy...">
-        </div>
-        <button type="submit" class="btn-ctrl active-sound" style="width:100%; justify-content:center; padding:0.65rem;">
-          💾 Salvar Configurações
-        </button>
-      </form>
-    </div>
-  </div>
-
   <!-- ÁREA DE IMPRESSÃO TÉRMICA (EXCLUSIVA PARA PAPEL 80MM / 72MM GOLDENSKY) -->
   <div id="receipt-print-area"></div>
 
   <!-- SCRIPT MODULAR DO PAINEL -->
+  <script>
+    window.__SUPABASE_CONFIG__ = {
+      url: "https://ymonpfdeopkjlgzhyabs.supabase.co",
+      anonKey: "sb_publishable_vPeuo0lbcNcHIep9HZ79fg_ZjnUd14E"
+    };
+  </script>
   <script type="module" src="assets/js/admin.js"></script>
 </body>
 </html>

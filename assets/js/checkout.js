@@ -6,7 +6,7 @@
 import { STORE_CONFIG, formatBRL } from "./products.js";
 import { getCartState, clearCart } from "./cart.js";
 import { calculateDeliveryFee } from "./shipping.js";
-import { createOrder, generateNextOrderNumber } from "./firebase-config.js";
+import { createOrder, generateNextOrderNumber } from "./firebase-config.js?v=20261102b";
 
 /**
  * Valida os dados do formulário de checkout
@@ -179,10 +179,18 @@ export async function processAndSaveOrder(formData, explicitFreight = null) {
       }
     };
   } catch (err) {
-    console.error("Erro ao salvar pedido:", err);
+    console.error("Erro ao salvar pedido:", {
+      code: err?.code,
+      message: err?.message,
+      details: err?.details,
+      hint: err?.hint
+    });
+    const errorCode = err?.code ? ` (${err.code})` : "";
     return {
       success: false,
-      errors: { general: "Ocorreu um erro ao processar seu pedido. Tente novamente." }
+      errors: {
+        general: `Não foi possível registrar o pedido${errorCode}. Verifique a configuração do Supabase e tente novamente.`
+      }
     };
   }
 }

@@ -1,501 +1,257 @@
 /**
- * Módulo de Integração com Firebase Firestore (via CDN)
- * Burguer On Artesanal - Sincronização em Tempo Real de Pedidos
+ * Persistência e sincronização de pedidos via Supabase.
+ *
+ * A configuração deve ser injetada no deploy:
+ * window.__SUPABASE_CONFIG__ = { url: "...", anonKey: "..." };
+ * Nunca coloque a service_role key no frontend.
  */
 
-// Referências das funções do SDK do Firebase
-let initializeApp = null;
-let getFirestore = null;
-let collection = null;
-let addDoc = null;
-let doc = null;
-let updateDoc = null;
-let onSnapshot = null;
-let query = null;
-let orderBy = null;
-let serverTimestamp = null;
-let getDocs = null;
-
-// Configuração padrão do Firebase para a aplicação Burguer On
-// O usuário também pode configurar suas credenciais salvas no localStorage
-const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDummyKeyBurguerOn_FirestoreRealtime",
-  authDomain: "burguer-on-artesanal.firebaseapp.com",
-  projectId: "burguer-on-artesanal",
-  storageBucket: "burguer-on-artesanal.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456"
-};
-
-// Canal local de alta velocidade entre abas (BroadcastChannel)
-const LOCAL_CHANNEL_NAME = "burguer_on_orders_channel";
 const LOCAL_STORAGE_KEY = "burguer_on_orders_db";
 const ORDER_COUNTER_KEY = "burguer_on_order_counter";
+const LOCAL_CHANNEL_NAME = "burguer_on_orders_channel";
 
-// Tópico em nuvem em tempo real (garante comunicação instantânea entre celular de clientes e notebook do restaurante)
-const CLOUD_SYNC_TOPIC = "burguer_on_cotia_live_orders_v1";
-const CLOUD_ENDPOINT = `https://ntfy.sh/${CLOUD_SYNC_TOPIC}`;
-
-async function broadcastToCloud(payload) {
-  try {
-    if (typeof fetch !== "undefined") {
-      await fetch(CLOUD_ENDPOINT, {
-        method: "POST",
-        body: JSON.stringify(payload),
-        headers: {
-          "Title": "Burguer On Pedido",
-          "Priority": "high"
-        }
-      });
-    }
-  } catch (err) {
-    console.warn("Aviso ao emitir para nuvem em tempo real:", err);
-  }
-}
-
+let supabase = null;
+let supabaseReady = false;
+let supabaseInitPromise = null;
+const activeOrderSubscribers = new Set();
 let localBroadcastChannel = null;
+
 try {
   if (typeof BroadcastChannel !== "undefined") {
     localBroadcastChannel = new BroadcastChannel(LOCAL_CHANNEL_NAME);
   }
-} catch (e) {
-  console.warn("BroadcastChannel indisponível:", e);
+} catch (error) {
+  console.warn("BroadcastChannel indisponível:", error);
 }
 
-// Gerenciador de inscritos locais ativos para sincronização imediata sem reload
-const activeOrderSubscribers = new Set();
-
-function notifyAllLocalSubscribers() {
-  const current = getLocalOrders();
-  activeOrderSubscribers.forEach((cb) => {
-    try {
-      cb(current);
-    } catch (err) {
-      console.warn("Erro ao notificar subscriber local:", err);
-    }
-  });
-}
-
-// Recupera a configuração ativa
-export function getActiveFirebaseConfig() {
-  try {
-    if (typeof localStorage !== "undefined") {
-      const custom = localStorage.getItem("BURGUER_ON_FIREBASE_CONFIG");
-      if (custom) {
-        const parsed = JSON.parse(custom);
-        if (parsed && parsed.projectId) return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn("Erro ao ler config do Firebase do localStorage:", err);
-  }
-  return DEFAULT_FIREBASE_CONFIG;
-}
-
-// Salva nova configuração do Firebase personalizada
-export function saveCustomFirebaseConfig(config) {
-  try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("BURGUER_ON_FIREBASE_CONFIG", JSON.stringify(config));
-      return true;
-    }
-  } catch (e) {
-    return false;
-  }
-  return false;
-}
-
-// Instâncias ativas do Firebase
-let app = null;
-let db = null;
-let firestoreInitialized = false;
-
-/**
- * Inicializa os módulos CDN do Firebase quando em ambiente de navegador
- */
-export async function initFirebaseFirestore() {
+function getSupabaseConfig() {
   if (typeof window === "undefined") return null;
-  if (firestoreInitialized) return db;
+  const config = window.__SUPABASE_CONFIG__;
+  if (!config || !config.url || !config.anonKey) return null;
+  return config;
+}
 
-  try {
-    const appModule = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js");
-    const fsModule = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js");
+export function getActiveFirebaseConfig() {
+  const config = getSupabaseConfig();
+  return config ? { url: config.url, anonKey: config.anonKey } : {};
+}
 
-    initializeApp = appModule.initializeApp;
-    getFirestore = fsModule.getFirestore;
-    collection = fsModule.collection;
-    addDoc = fsModule.addDoc;
-    doc = fsModule.doc;
-    updateDoc = fsModule.updateDoc;
-    onSnapshot = fsModule.onSnapshot;
-    query = fsModule.query;
-    orderBy = fsModule.orderBy;
-    serverTimestamp = fsModule.serverTimestamp;
-    getDocs = fsModule.getDocs;
+export function saveCustomFirebaseConfig() {
+  throw new Error("A configuração do Supabase deve ser fornecida pelo ambiente de deploy.");
+}
 
-    const config = getActiveFirebaseConfig();
-    app = initializeApp(config, "burguerOnApp_" + Date.now());
-    db = getFirestore(app);
-    firestoreInitialized = true;
-    console.log("Firebase Firestore inicializado com sucesso via CDN.");
-    return db;
-  } catch (err) {
-    console.warn("Aviso ao carregar Firebase Firestore CDN (modo local/sincronizado ativo):", err.message);
-    return null;
+export async function initFirebaseFirestore() {
+  if (supabaseReady) return supabase;
+  if (supabaseInitPromise) return supabaseInitPromise;
+
+  supabaseInitPromise = (async () => {
+    const config = getSupabaseConfig();
+    if (!config) return null;
+
+    try {
+      const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+      supabase = createClient(config.url, config.anonKey);
+      supabaseReady = true;
+      return supabase;
+    } catch (error) {
+      console.error("Não foi possível carregar o cliente Supabase:", error);
+      return null;
+    }
+  })();
+
+  return supabaseInitPromise;
+}
+
+if (typeof window !== "undefined") initFirebaseFirestore();
+
+export async function signInAdmin(email, password) {
+  const client = await initFirebaseFirestore();
+  if (!client) throw new Error("Supabase não configurado neste deploy.");
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.session;
+}
+
+export async function signOutAdmin() {
+  const client = await initFirebaseFirestore();
+  if (client) {
+    const { error } = await client.auth.signOut();
+    if (error) throw error;
   }
 }
 
-// Inicializa automaticamente no browser
-if (typeof window !== "undefined") {
-  initFirebaseFirestore();
+export async function getAdminSession() {
+  const client = await initFirebaseFirestore();
+  if (!client) return null;
+  const { data, error } = await client.auth.getSession();
+  if (error) throw error;
+  return data.session;
 }
 
-/**
- * Gera um número sequencial de pedido (ex: 1001, 1002, 1003...)
- */
 export function generateNextOrderNumber() {
   try {
-    let current = parseInt(localStorage.getItem(ORDER_COUNTER_KEY) || "1000", 10);
-    current += 1;
-    localStorage.setItem(ORDER_COUNTER_KEY, current.toString());
-    return current.toString();
-  } catch (e) {
-    return Math.floor(1000 + Math.random() * 9000).toString();
+    const current = parseInt(localStorage.getItem(ORDER_COUNTER_KEY) || "1000", 10);
+    const next = current + 1;
+    localStorage.setItem(ORDER_COUNTER_KEY, String(next));
+    return String(next);
+  } catch (error) {
+    return String(Math.floor(1000 + Math.random() * 9000));
   }
 }
 
-/**
- * Lê os pedidos salvos localmente
- */
 export function getLocalOrders() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch (e) {
+  } catch (error) {
+    console.error("Erro ao ler pedidos locais:", error);
     return [];
   }
 }
 
-/**
- * Salva a lista de pedidos localmente
- */
 function setLocalOrders(orders) {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(orders));
-  } catch (e) {
-    console.error("Erro ao salvar pedido no localStorage:", e);
-  }
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(orders));
 }
 
-/**
- * Salva um novo pedido no Firestore e na redundância local
- * @param {Object} orderData 
- * @returns {Promise<{ success: boolean, id: string, orderNumber: string }>}
- */
+function notifyLocalSubscribers() {
+  const orders = getLocalOrders();
+  activeOrderSubscribers.forEach((callback) => callback(orders));
+}
+
+function generateOrderId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `local_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+}
+
+function normalizeOrder(row) {
+  return {
+    ...row,
+    id: row.id,
+    numero: String(row.numero),
+    criadoEmMs: row.criado_em_ms || row.criadoEmMs || Date.now(),
+    dataHoraFormatada: row.data_hora_formatada || row.dataHoraFormatada || new Date(row.criado_em_ms || Date.now()).toLocaleString("pt-BR"),
+    impresso: Boolean(row.impresso),
+    distanciaKm: row.distancia_km || row.distanciaKm || 0,
+    itens: (row.itens || []).map((item) => ({
+      ...item,
+      nome: item.nome || item.name,
+      quantidade: item.quantidade || item.quantity,
+      preco: item.preco || item.unitPrice,
+      precoTotal: item.precoTotal || item.totalPrice,
+      adicionais: item.adicionais || item.extras || [],
+      observacao: item.observacao || item.observations || ""
+    }))
+  };
+}
+
 export async function createOrder(orderData) {
-  const orderNumber = orderData.numero || generateNextOrderNumber();
+  const client = await initFirebaseFirestore();
   const timestampMs = Date.now();
-  
+  const orderId = generateOrderId();
   const newOrder = {
     ...orderData,
-    numero: orderNumber,
-    criadoEmMs: timestampMs,
-    dataHoraFormatada: new Date(timestampMs).toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    }),
+    id: orderId,
+    numero: orderData.numero || generateNextOrderNumber(),
+    criado_em_ms: timestampMs,
+    data_hora_formatada: new Date(timestampMs).toLocaleString("pt-BR"),
     status: orderData.status || "pendente",
     impresso: Boolean(orderData.impresso)
   };
 
-  let firestoreDocId = null;
-
-  // 1. Tentar gravar no Firebase Firestore
-  if (db && firestoreInitialized) {
-    try {
-      const docRef = await addDoc(collection(db, "pedidos"), {
-        ...newOrder,
-        criadoEm: serverTimestamp()
-      });
-      firestoreDocId = docRef.id;
-      console.log("Pedido gravado no Firestore com ID:", firestoreDocId);
-    } catch (fsError) {
-      console.warn("Aviso: Falha ao enviar para Firestore (usando fallback sincronizado):", fsError.message);
-    }
+  if (client) {
+    const databaseOrder = {
+      id: orderId,
+      numero: newOrder.numero,
+      tipo: newOrder.tipo,
+      status: newOrder.status,
+      impresso: newOrder.impresso,
+      distancia_km: newOrder.distanciaKm || 0,
+      cliente: newOrder.cliente,
+      itens: newOrder.itens,
+      subtotal: newOrder.subtotal,
+      frete: newOrder.frete,
+      total: newOrder.total,
+      pagamento: newOrder.pagamento,
+      criado_em_ms: newOrder.criado_em_ms,
+      data_hora_formatada: newOrder.data_hora_formatada
+    };
+    // Não usamos .select() aqui: clientes anônimos podem inserir, mas não podem ler pedidos.
+    const { error } = await client.from("pedidos").insert(databaseOrder);
+    if (error) throw error;
+    return { success: true, id: orderId, orderNumber: newOrder.numero };
   }
 
-  // 2. Gravar no armazenamento local sincronizado
-  const localId = firestoreDocId || `local_${timestampMs}_${Math.floor(Math.random() * 1000)}`;
-  newOrder.id = localId;
-
-  const currentLocal = getLocalOrders();
-  // Insere no início
-  currentLocal.unshift(newOrder);
-  // Mantém os últimos 100 pedidos
-  if (currentLocal.length > 100) currentLocal.length = 100;
-  setLocalOrders(currentLocal);
-
-  // 3. Notificar abas abertas (admin/kds) instantaneamente
-  if (localBroadcastChannel) {
-    localBroadcastChannel.postMessage({
-      type: "NEW_ORDER",
-      order: newOrder
-    });
-  }
-
-  // Notifica imediatamente os ouvintes na mesma aba
-  notifyAllLocalSubscribers();
-
-  // 4. Emite instantaneamente para a nuvem em tempo real (celular do cliente -> notebook do restaurante)
-  broadcastToCloud({
-    type: "NEW_ORDER",
-    order: newOrder
-  }).catch(() => {});
-
-  return {
-    success: true,
-    id: localId,
-    orderNumber
-  };
+  const localOrder = normalizeOrder(newOrder);
+  const orders = [localOrder, ...getLocalOrders()].slice(0, 100);
+  setLocalOrders(orders);
+  if (localBroadcastChannel) localBroadcastChannel.postMessage({ type: "ORDERS_CHANGED" });
+  notifyLocalSubscribers();
+  return { success: true, id: localOrder.id, orderNumber: localOrder.numero };
 }
 
-/**
- * Atualiza o status de um pedido (pendente -> preparo -> entrega -> finalizado)
- */
+async function updateOrder(orderId, values) {
+  const client = await initFirebaseFirestore();
+  if (client && !String(orderId).startsWith("local_")) {
+    const { error } = await client.from("pedidos").update(values).eq("id", orderId);
+    if (error) throw error;
+  }
+
+  const orders = getLocalOrders();
+  const target = orders.find((order) => order.id === orderId);
+  if (target) {
+    Object.assign(target, values);
+    setLocalOrders(orders);
+    notifyLocalSubscribers();
+  }
+  if (localBroadcastChannel) localBroadcastChannel.postMessage({ type: "ORDERS_CHANGED" });
+}
+
 export async function updateOrderStatus(orderId, newStatus) {
-  // Atualiza local
-  const orders = getLocalOrders();
-  const target = orders.find(o => o.id === orderId);
-  if (target) {
-    target.status = newStatus;
-    setLocalOrders(orders);
-  }
-
-  // Notifica outras abas abertas
-  if (localBroadcastChannel) {
-    localBroadcastChannel.postMessage({
-      type: "STATUS_UPDATE",
-      orderId,
-      status: newStatus
-    });
-  }
-
-  // Notifica imediatamente ouvintes na mesma aba
-  notifyAllLocalSubscribers();
-
-  // Emite atualização para a nuvem
-  broadcastToCloud({
-    type: "STATUS_UPDATE",
-    orderId,
-    status: newStatus
-  }).catch(() => {});
-
-  // Tenta atualizar Firestore se disponível e não for apenas ID local
-  if (db && firestoreInitialized && !orderId.startsWith("local_")) {
-    try {
-      const docRef = doc(db, "pedidos", orderId);
-      await updateDoc(docRef, { status: newStatus });
-    } catch (err) {
-      console.warn("Falha ao atualizar status no Firestore:", err.message);
-    }
-  }
-
+  await updateOrder(orderId, { status: newStatus });
   return true;
 }
 
-/**
- * Marca um pedido como impresso
- */
 export async function markOrderAsPrinted(orderId) {
-  const orders = getLocalOrders();
-  const target = orders.find(o => o.id === orderId);
-  if (target) {
-    target.impresso = true;
-    setLocalOrders(orders);
-  }
-
-  if (localBroadcastChannel) {
-    localBroadcastChannel.postMessage({
-      type: "PRINT_UPDATE",
-      orderId,
-      impresso: true
-    });
-  }
-
-  // Notifica imediatamente ouvintes na mesma aba
-  notifyAllLocalSubscribers();
-
-  // Emite atualização de impressão para a nuvem
-  broadcastToCloud({
-    type: "PRINT_UPDATE",
-    orderId,
-    impresso: true
-  }).catch(() => {});
-
-  if (db && firestoreInitialized && !orderId.startsWith("local_")) {
-    try {
-      const docRef = doc(db, "pedidos", orderId);
-      await updateDoc(docRef, { impresso: true });
-    } catch (err) {
-      console.warn("Falha ao atualizar impressão no Firestore:", err.message);
-    }
-  }
-
+  await updateOrder(orderId, { impresso: true });
   return true;
 }
 
-/**
- * Escuta pedidos em tempo real no Firestore e via BroadcastChannel
- * @param {Function} onOrdersUpdate - Callback chamado com a lista completa de pedidos
- */
 export function subscribeToOrders(onOrdersUpdate) {
-  let unsubscribeFirestore = null;
-
   activeOrderSubscribers.add(onOrdersUpdate);
-
-  // Emite o estado inicial local
   onOrdersUpdate(getLocalOrders());
+  let channel = null;
+  let cancelled = false;
 
-  // 1. Escuta canal local entre abas
-  const handleLocalMessage = (event) => {
-    if (event.data && (event.data.type === "NEW_ORDER" || event.data.type === "STATUS_UPDATE" || event.data.type === "PRINT_UPDATE")) {
-      onOrdersUpdate(getLocalOrders());
+  (async () => {
+    const client = await initFirebaseFirestore();
+    if (!client || cancelled) return;
+    const { data, error } = await client.from("pedidos").select("*").order("criado_em_ms", { ascending: false }).limit(100);
+    if (!error && data) {
+      const orders = data.map(normalizeOrder);
+      setLocalOrders(orders);
+      onOrdersUpdate(orders);
     }
-  };
-
-  if (localBroadcastChannel) {
-    localBroadcastChannel.addEventListener("message", handleLocalMessage);
-  }
-
-  // 2. Escuta Nuvem em Tempo Real (Cross-Device: Celular do cliente ➡️ Notebook do restaurante)
-  let cloudEventSource = null;
-  if (typeof EventSource !== "undefined") {
-    try {
-      cloudEventSource = new EventSource(`${CLOUD_ENDPOINT}/sse`);
-      cloudEventSource.onmessage = (event) => {
-        try {
-          const raw = JSON.parse(event.data);
-          const payload = typeof raw.message === "string" ? JSON.parse(raw.message) : raw.message;
-          if (!payload) return;
-
-          if (payload.type === "NEW_ORDER" && payload.order) {
-            const current = getLocalOrders();
-            // Verifica se o pedido já não foi adicionado
-            if (!current.some(o => o.id === payload.order.id || (o.numero && o.numero === payload.order.numero))) {
-              current.unshift(payload.order);
-              if (current.length > 100) current.length = 100;
-              setLocalOrders(current);
-              onOrdersUpdate(current);
-            }
-          } else if (payload.type === "STATUS_UPDATE" && payload.orderId) {
-            const current = getLocalOrders();
-            const target = current.find(o => o.id === payload.orderId);
-            if (target && target.status !== payload.status) {
-              target.status = payload.status;
-              setLocalOrders(current);
-              onOrdersUpdate(current);
-            }
-          } else if (payload.type === "PRINT_UPDATE" && payload.orderId) {
-            const current = getLocalOrders();
-            const target = current.find(o => o.id === payload.orderId);
-            if (target && !target.impresso) {
-              target.impresso = true;
-              setLocalOrders(current);
-              onOrdersUpdate(current);
-            }
-          }
-        } catch (e) {
-          // Mensagem ignorada se não for JSON válido
-        }
-      };
-    } catch (err) {
-      console.warn("Aviso ao conectar SSE da nuvem:", err);
-    }
-  }
-
-  // 3. Busca pedidos recentes das últimas 24h na nuvem (caso o painel tenha sido aberto após os pedidos terem sido feitos)
-  if (typeof fetch !== "undefined") {
-    fetch(`${CLOUD_ENDPOINT}/json?poll=1&since=24h`)
-      .then(r => r.ok ? r.text() : "")
-      .then(text => {
-        if (!text) return;
-        const lines = text.trim().split("\n");
-        let hasChanges = false;
-        const current = getLocalOrders();
-
-        lines.forEach(line => {
-          if (!line) return;
-          try {
-            const raw = JSON.parse(line);
-            const payload = typeof raw.message === "string" ? JSON.parse(raw.message) : raw.message;
-            if (payload && payload.type === "NEW_ORDER" && payload.order) {
-              if (!current.some(o => o.id === payload.order.id || (o.numero && o.numero === payload.order.numero))) {
-                current.push(payload.order);
-                hasChanges = true;
-              }
-            }
-          } catch (e) {}
-        });
-
-        if (hasChanges) {
-          current.sort((a, b) => (b.criadoEmMs || 0) - (a.criadoEmMs || 0));
-          setLocalOrders(current);
-          onOrdersUpdate(current);
+    channel = client.channel("pedidos-kds")
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, async () => {
+        const result = await client.from("pedidos").select("*").order("criado_em_ms", { ascending: false }).limit(100);
+        if (!result.error && result.data) {
+          const orders = result.data.map(normalizeOrder);
+          setLocalOrders(orders);
+          onOrdersUpdate(orders);
         }
       })
-      .catch(() => {});
-  }
+      .subscribe();
+  })();
 
-  // 4. Escuta Firestore em tempo real (se configurado com chaves do usuário)
-  if (db && firestoreInitialized) {
-    try {
-      const q = query(collection(db, "pedidos"), orderBy("criadoEmMs", "desc"));
-      unsubscribeFirestore = onSnapshot(q, (snapshot) => {
-        const fsOrders = [];
-        snapshot.forEach((docSnap) => {
-          fsOrders.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          });
-        });
+  const handleLocalMessage = () => onOrdersUpdate(getLocalOrders());
+  if (localBroadcastChannel) localBroadcastChannel.addEventListener("message", handleLocalMessage);
 
-        if (fsOrders.length > 0) {
-          // Mescla com locais para não perder nenhum
-          const local = getLocalOrders();
-          const mergedMap = new Map();
-          
-          fsOrders.forEach(o => mergedMap.set(o.id, o));
-          local.forEach(o => {
-            if (!mergedMap.has(o.id)) {
-              mergedMap.set(o.id, o);
-            }
-          });
-
-          const merged = Array.from(mergedMap.values());
-          merged.sort((a, b) => (b.criadoEmMs || 0) - (a.criadoEmMs || 0));
-          setLocalOrders(merged);
-          onOrdersUpdate(merged);
-        }
-      }, (error) => {
-        console.warn("Aviso listener Firestore (usando canal local):", error.message);
-      });
-    } catch (err) {
-      console.warn("Erro ao configurar snapshot Firestore:", err);
-    }
-  }
-
-  // Retorna função de desinscrição
   return () => {
+    cancelled = true;
     activeOrderSubscribers.delete(onOrdersUpdate);
-    if (cloudEventSource) {
-      cloudEventSource.close();
-    }
-    if (unsubscribeFirestore) unsubscribeFirestore();
-    if (localBroadcastChannel) {
-      localBroadcastChannel.removeEventListener("message", handleLocalMessage);
-    }
+    if (channel) channel.unsubscribe();
+    if (localBroadcastChannel) localBroadcastChannel.removeEventListener("message", handleLocalMessage);
   };
 }

@@ -89,3 +89,19 @@ Para validar toda a lógica de negócio, catálogo de produtos, cálculos e inte
 ```bash
 node tests/test_cart_and_checkout.js
 ```
+
+## Supabase
+
+O Firebase e o ntfy não são mais usados. A persistência dos pedidos e o Realtime
+usam Supabase.
+
+1. Abra o SQL Editor do Supabase e execute [`supabase/schema.sql`](./supabase/schema.sql).
+2. Em **Authentication > Users**, crie um usuário para o painel da cozinha.
+3. Copie a URL do projeto e a chave pública `anon` em `index.html` e `admin.html`,
+   no objeto `window.__SUPABASE_CONFIG__`.
+4. Nunca use a chave `service_role` no navegador ou no GitHub Pages.
+5. Ative o Realtime para a tabela `pedidos` caso o projeto ainda não o tenha
+   habilitado.
+
+O painel exige login pelo Supabase Auth. Clientes podem criar pedidos sem login,
+mas somente usuários autenticados podem consultar e alterar pedidos.
