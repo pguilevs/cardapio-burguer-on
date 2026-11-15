@@ -125,6 +125,13 @@ usam Supabase.
 4. Nunca use a chave `service_role` no navegador ou no GitHub Pages.
 5. Ative o Realtime para a tabela `pedidos` caso o projeto ainda não o tenha
    habilitado.
+6. Ao atualizar o schema, execute o arquivo completo novamente para habilitar o
+   status global de pedidos, o histórico e a numeração diária.
+
+No painel administrativo, **Pedidos Abertos/Fechados** controla globalmente se
+clientes podem criar pedidos. **Encerrar Dia** exige que todos os pedidos estejam
+finalizados, arquiva os pedidos e fecha o recebimento. O botão **Histórico** exibe
+os pedidos arquivados.
 
 O painel exige login pelo Supabase Auth. Clientes podem criar pedidos sem login,
 mas somente usuários autenticados podem consultar e alterar pedidos.

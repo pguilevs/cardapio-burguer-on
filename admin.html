@@ -59,6 +59,18 @@
         🔔 Bip Teste
       </button>
 
+      <button id="btn-toggle-orders" class="btn-ctrl active-orders" title="Abrir ou fechar o recebimento de pedidos">
+        🔓 Pedidos Abertos
+      </button>
+
+      <button id="btn-close-day" class="btn-ctrl btn-close-day" title="Arquivar os pedidos finalizados e encerrar o dia">
+        🧾 Encerrar Dia
+      </button>
+
+      <button id="btn-history" class="btn-ctrl" title="Consultar pedidos arquivados">
+        📚 Histórico
+      </button>
+
       <button id="btn-demo-order" class="btn-ctrl" title="Simular novo pedido no sistema">
         ⚡ Pedido Teste
       </button>
@@ -142,6 +154,16 @@
     </section>
 
   </main>
+
+  <section id="order-history-panel" class="order-history-panel hidden">
+    <div class="order-history-header">
+      <h2>📚 Histórico de Pedidos</h2>
+      <button id="btn-close-history" class="btn-ctrl">Fechar</button>
+    </div>
+    <div id="order-history-list" class="order-history-list">
+      <div class="kds-empty-state">Nenhum pedido arquivado.</div>
+    </div>
+  </section>
 
   <!-- ÁREA DE IMPRESSÃO TÉRMICA (EXCLUSIVA PARA PAPEL 80MM / 72MM GOLDENSKY) -->
   <div id="receipt-print-area"></div>

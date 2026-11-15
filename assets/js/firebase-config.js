@@ -99,6 +99,55 @@ export function generateNextOrderNumber() {
   }
 }
 
+export async function getStoreStatus() {
+  const client = await initFirebaseFirestore();
+  if (!client) return { isOpen: true };
+
+  const { data, error } = await client
+    .from("configuracao_loja")
+    .select("pedidos_abertos")
+    .eq("id", true)
+    .single();
+  if (error) throw error;
+  return { isOpen: Boolean(data.pedidos_abertos) };
+}
+
+export async function setStoreOpen(isOpen) {
+  const client = await initFirebaseFirestore();
+  if (!client) throw new Error("Supabase não configurado neste deploy.");
+
+  const { data, error } = await client.rpc("definir_pedidos_abertos", {
+    novo_status: Boolean(isOpen)
+  });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function closeBusinessDay() {
+  const client = await initFirebaseFirestore();
+  if (!client) throw new Error("Supabase não configurado neste deploy.");
+
+  const { data, error } = await client.rpc("encerrar_dia");
+  if (error) throw error;
+  localStorage.removeItem(LOCAL_STORAGE_KEY);
+  notifyLocalSubscribers();
+  return Number(data || 0);
+}
+
+export async function getArchivedOrders() {
+  const client = await initFirebaseFirestore();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from("pedidos")
+    .select("*")
+    .not("arquivado_em_ms", "is", null)
+    .order("arquivado_em_ms", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data || []).map(normalizeOrder);
+}
+
 export function getLocalOrders() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -150,10 +199,25 @@ export async function createOrder(orderData) {
   const client = await initFirebaseFirestore();
   const timestampMs = Date.now();
   const orderId = generateOrderId();
+  let orderNumber = orderData.numero || generateNextOrderNumber();
+
+  if (client) {
+    const storeStatus = await getStoreStatus();
+    if (!storeStatus.isOpen) {
+      const error = new Error("A loja está fechada para novos pedidos.");
+      error.code = "STORE_CLOSED";
+      throw error;
+    }
+
+    const { data, error } = await client.rpc("proximo_numero_pedido");
+    if (error) throw error;
+    orderNumber = String(data);
+  }
+
   const newOrder = {
     ...orderData,
     id: orderId,
-    numero: orderData.numero || generateNextOrderNumber(),
+    numero: orderNumber,
     criado_em_ms: timestampMs,
     data_hora_formatada: new Date(timestampMs).toLocaleString("pt-BR"),
     status: orderData.status || "pendente",
@@ -227,7 +291,12 @@ export function subscribeToOrders(onOrdersUpdate) {
   (async () => {
     const client = await initFirebaseFirestore();
     if (!client || cancelled) return;
-    const { data, error } = await client.from("pedidos").select("*").order("criado_em_ms", { ascending: false }).limit(100);
+    const { data, error } = await client
+      .from("pedidos")
+      .select("*")
+      .is("arquivado_em_ms", null)
+      .order("criado_em_ms", { ascending: false })
+      .limit(100);
     if (!error && data) {
       const orders = data.map(normalizeOrder);
       setLocalOrders(orders);
@@ -235,7 +304,12 @@ export function subscribeToOrders(onOrdersUpdate) {
     }
     channel = client.channel("pedidos-kds")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, async () => {
-        const result = await client.from("pedidos").select("*").order("criado_em_ms", { ascending: false }).limit(100);
+        const result = await client
+          .from("pedidos")
+          .select("*")
+          .is("arquivado_em_ms", null)
+          .order("criado_em_ms", { ascending: false })
+          .limit(100);
         if (!result.error && result.data) {
           const orders = result.data.map(normalizeOrder);
           setLocalOrders(orders);

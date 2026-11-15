@@ -170,6 +170,7 @@ export async function processAndSaveOrder(formData, explicitFreight = null) {
     const result = await createOrder(orderPayload);
     // Limpa a sacola após gravação com sucesso
     clearCart();
+    orderPayload.numero = result.orderNumber;
 
     return {
       success: true,
@@ -189,7 +190,9 @@ export async function processAndSaveOrder(formData, explicitFreight = null) {
     return {
       success: false,
       errors: {
-        general: `Não foi possível registrar o pedido${errorCode}. Verifique a configuração do Supabase e tente novamente.`
+        general: err?.code === "STORE_CLOSED"
+          ? "A loja está fechada para novos pedidos no momento."
+          : `Não foi possível registrar o pedido${errorCode}. Verifique a configuração do Supabase e tente novamente.`
       }
     };
   }

@@ -164,6 +164,19 @@ body {
   border-color: var(--kds-info);
 }
 
+.btn-ctrl.active-orders {
+  background: var(--kds-success-light);
+  color: #86efac;
+  border-color: var(--kds-success);
+}
+
+.btn-ctrl.orders-closed,
+.btn-close-day {
+  background: var(--kds-danger-light);
+  color: #fca5a5;
+  border-color: var(--kds-danger);
+}
+
 .btn-ctrl.alarm-pulsing {
   animation: pulse-alarm 1.2s infinite;
   background: var(--kds-danger);
@@ -358,6 +371,40 @@ body {
   color: var(--kds-text-muted);
   font-size: 0.85rem;
   font-style: italic;
+}
+
+.order-history-panel {
+  position: fixed;
+  inset: 5rem 1rem 1rem;
+  z-index: 90;
+  padding: 1rem;
+  background: var(--kds-bg);
+  border: 1px solid var(--kds-border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+
+.order-history-panel.hidden {
+  display: none;
+}
+
+.order-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.order-history-header h2 {
+  font-size: 1.1rem;
+}
+
+.order-history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  align-items: start;
+  gap: 0.75rem;
 }
 
 /* ==========================================================================

@@ -11,8 +11,12 @@ import {
   getLocalOrders,
   getAdminSession,
   signInAdmin,
-  signOutAdmin
-} from "./firebase-config.js?v=20261102b";
+  signOutAdmin,
+  getStoreStatus,
+  setStoreOpen,
+  closeBusinessDay,
+  getArchivedOrders
+} from "./firebase-config.js?v=20261115b";
 
 // ==========================================================================
 // ESTADO DO PAINEL
@@ -24,6 +28,8 @@ let autoPrintEnabled = true;
 let isAlertRinging = false;
 let audioContext = null;
 let soundIntervalId = null;
+let storeIsOpen = true;
+let archivedOrders = [];
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -32,6 +38,52 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function showAdminNotice(message, isError = false) {
+  const notice = document.createElement("div");
+  notice.className = `kds-action-notice ${isError ? "error" : ""}`;
+  notice.textContent = message;
+  document.body.appendChild(notice);
+  setTimeout(() => notice.remove(), 3200);
+}
+
+function updateOrdersButton() {
+  const button = document.getElementById("btn-toggle-orders");
+  if (!button) return;
+  button.classList.toggle("active-orders", storeIsOpen);
+  button.classList.toggle("orders-closed", !storeIsOpen);
+  button.textContent = storeIsOpen ? "🔓 Pedidos Abertos" : "🔒 Pedidos Fechados";
+}
+
+async function loadStoreStatus() {
+  try {
+    const status = await getStoreStatus();
+    storeIsOpen = status.isOpen;
+    updateOrdersButton();
+  } catch (error) {
+    console.error("Erro ao consultar o status da loja:", error);
+    showAdminNotice("Não foi possível consultar o status dos pedidos.", true);
+  }
+}
+
+async function showOrderHistory() {
+  const panel = document.getElementById("order-history-panel");
+  const list = document.getElementById("order-history-list");
+  if (!panel || !list) return;
+
+  panel.classList.remove("hidden");
+  list.innerHTML = '<div class="kds-empty-state">Carregando histórico...</div>';
+
+  try {
+    archivedOrders = await getArchivedOrders();
+    list.innerHTML = archivedOrders.length
+      ? archivedOrders.map(renderOrderCard).join("")
+      : '<div class="kds-empty-state">Nenhum pedido arquivado.</div>';
+  } catch (error) {
+    console.error("Erro ao carregar histórico de pedidos:", error);
+    list.innerHTML = '<div class="kds-empty-state">Não foi possível carregar o histórico.</div>';
+  }
 }
 
 // ==========================================================================
@@ -509,7 +561,7 @@ function setupEventListeners() {
 
     const action = btn.dataset.action;
     const orderId = btn.dataset.id;
-    const order = allOrders.find(o => o.id === orderId);
+    const order = allOrders.find(o => o.id === orderId) || archivedOrders.find(o => o.id === orderId);
 
     if (action === "status" && order) {
       const nextStatus = btn.dataset.next;
@@ -542,13 +594,6 @@ function setupEventListeners() {
       markOrderAsPrinted(order.id).catch(() => {});
     }
 
-    function showAdminNotice(message, isError = false) {
-      const notice = document.createElement("div");
-      notice.className = `kds-action-notice ${isError ? "error" : ""}`;
-      notice.textContent = message;
-      document.body.appendChild(notice);
-      setTimeout(() => notice.remove(), 2800);
-    }
   });
 
   // Toggle Som
@@ -592,6 +637,60 @@ function setupEventListeners() {
     testSoundBtn.addEventListener("click", () => {
       getAudioContext();
       playRestaurantChime();
+    });
+  }
+
+  const ordersToggleBtn = document.getElementById("btn-toggle-orders");
+  if (ordersToggleBtn) {
+    ordersToggleBtn.addEventListener("click", async () => {
+      ordersToggleBtn.disabled = true;
+      try {
+        storeIsOpen = await setStoreOpen(!storeIsOpen);
+        updateOrdersButton();
+        showAdminNotice(storeIsOpen ? "Pedidos abertos para os clientes." : "Pedidos fechados para os clientes.");
+      } catch (error) {
+        console.error("Erro ao alterar o status dos pedidos:", error);
+        showAdminNotice("Não foi possível alterar o status dos pedidos.", true);
+      } finally {
+        ordersToggleBtn.disabled = false;
+      }
+    });
+  }
+
+  const closeDayBtn = document.getElementById("btn-close-day");
+  if (closeDayBtn) {
+    closeDayBtn.addEventListener("click", async () => {
+      if (!window.confirm("Encerrar o dia? Esta ação arquiva todos os pedidos finalizados e fecha novos pedidos.")) return;
+      closeDayBtn.disabled = true;
+      try {
+        const archivedCount = await closeBusinessDay();
+        allOrders = [];
+        previousOrdersCount = 0;
+        storeIsOpen = false;
+        updateOrdersButton();
+        updateKdsDisplay();
+        showAdminNotice(`${archivedCount} pedido(s) arquivado(s). O dia foi encerrado.`);
+      } catch (error) {
+        console.error("Erro ao encerrar o dia:", error);
+        showAdminNotice(
+          error?.message?.includes("não finalizado")
+            ? error.message
+            : "Não foi possível encerrar o dia.",
+          true
+        );
+      } finally {
+        closeDayBtn.disabled = false;
+      }
+    });
+  }
+
+  const historyBtn = document.getElementById("btn-history");
+  if (historyBtn) historyBtn.addEventListener("click", showOrderHistory);
+
+  const closeHistoryBtn = document.getElementById("btn-close-history");
+  if (closeHistoryBtn) {
+    closeHistoryBtn.addEventListener("click", () => {
+      document.getElementById("order-history-panel")?.classList.add("hidden");
     });
   }
 
@@ -708,6 +807,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (login) login.classList.add("hidden");
     setupEventListeners();
     updateClock();
+    updateOrdersButton();
+    loadStoreStatus();
 
     subscribeToOrders((orders) => {
       const isFirstLoad = allOrders.length === 0;

@@ -24,6 +24,7 @@ import {
   formatCEPMask,
   calculateDeliveryFee
 } from "./shipping.js";
+import { getStoreStatus } from "./firebase-config.js?v=20261115a";
 
 // Estado interno da UI
 let currentModalProduct = null;
@@ -33,6 +34,7 @@ let activeCategoryFilter = "all";
 let searchTerm = "";
 let currentDeliveryFee = 0;
 let lastCreatedOrder = null;
+let storeIsOpen = true;
 
 // Elementos principais do DOM
 const dom = {
@@ -133,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
 /**
  * Verifica e exibe o status de funcionamento da loja
  */
-function initStoreStatus() {
+async function initStoreStatus() {
   let isOpen = true;
 
   if (STORE_CONFIG.manualStatus !== null) {
@@ -161,6 +163,18 @@ function initStoreStatus() {
     isOpen = isLunchOpen || isDinnerOpen;
   }
 
+  try {
+    const remoteStatus = await getStoreStatus();
+    isOpen = remoteStatus.isOpen;
+  } catch (error) {
+    console.error("Não foi possível consultar o status global da loja:", error);
+  }
+
+  storeIsOpen = isOpen;
+  applyStoreStatus(isOpen);
+}
+
+function applyStoreStatus(isOpen) {
   if (isOpen) {
     dom.storeStatusDot.className = "w-2.5 h-2.5 rounded-full status-dot-open";
     dom.storeStatusText.textContent = "Aberto Agora";
@@ -170,6 +184,8 @@ function initStoreStatus() {
     dom.storeStatusText.textContent = "Fechado (Aceitando pedidos agendados)";
     dom.storeStatusText.className = "text-xs font-semibold text-rose-400";
   }
+
+  updateDeliveryFeeDisplay();
 }
 
 /**
@@ -703,6 +719,12 @@ function updateDeliveryFeeDisplay() {
   const grandTotal = subtotal + currentDeliveryFee;
   if (dom.cartTotalText) {
     dom.cartTotalText.textContent = formatBRL(grandTotal);
+  }
+
+  if (!storeIsOpen && dom.submitOrderBtn) {
+    dom.submitOrderBtn.disabled = true;
+    dom.submitOrderBtn.classList.add("opacity-50", "cursor-not-allowed");
+    if (dom.submitBtnText) dom.submitBtnText.textContent = "Pedidos encerrados";
   }
 }
 
