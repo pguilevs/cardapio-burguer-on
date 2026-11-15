@@ -149,5 +149,26 @@ grant execute on function public.proximo_numero_pedido() to anon, authenticated;
 grant execute on function public.definir_pedidos_abertos(boolean) to authenticated;
 grant execute on function public.encerrar_dia() to authenticated;
 
-alter publication supabase_realtime add table public.pedidos;
-alter publication supabase_realtime add table public.configuracao_loja;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'pedidos'
+  ) then
+    alter publication supabase_realtime add table public.pedidos;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'configuracao_loja'
+  ) then
+    alter publication supabase_realtime add table public.configuracao_loja;
+  end if;
+end
+$$;
