@@ -148,6 +148,7 @@ create policy "clientes anonimos podem criar pedidos"
 grant execute on function public.proximo_numero_pedido() to anon, authenticated;
 grant execute on function public.definir_pedidos_abertos(boolean) to authenticated;
 grant execute on function public.encerrar_dia() to authenticated;
+grant execute on function public.loja_aceita_pedidos() to anon, authenticated;
 
 do $$
 begin
