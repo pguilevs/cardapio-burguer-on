@@ -1,6 +1,6 @@
 # 🍔 Burguer On Artesanal - Cardápio Digital Interativo & Pedidos WhatsApp
 
-Aplicação web completa (Single Page Application - SPA) de Cardápio Digital Interativo desenvolvida para a hamburgueria artesanal **Burguer On Artesanal**, pronta para publicação gratuita no **GitHub Pages** (sem necessidade de backend, banco de dados ou servidor).
+Aplicação web completa (Single Page Application - SPA) de Cardápio Digital Interativo desenvolvida para a hamburgueria artesanal **Burguer On Artesanal**, pronta para publicação gratuita como site estático (sem necessidade de backend, banco de dados ou servidor próprio).
 
 ---
 
@@ -53,7 +53,30 @@ Cardapio Hamburguer ON/
 
 ---
 
-## 🚀 Como Publicar no GitHub Pages (Passo a Passo)
+## 🚀 Como Publicar no Render (Passo a Passo)
+
+O arquivo [`render.yaml`](./render.yaml) já configura este projeto como **Static Site**. No Render:
+
+1. Acesse [dashboard.render.com](https://dashboard.render.com/) e clique em **New > Blueprint**.
+2. Conecte o repositório `pguilevs/cardapio-burguer-on`.
+3. Selecione a branch `main` e confirme o serviço `burguer-on`.
+4. Clique em **Apply**. Não é necessário informar comando de build: o Render publica a raiz do repositório.
+5. Teste a URL `https://burguer-on.onrender.com`.
+
+### Domínio personalizado `burgeron.live`
+
+Depois que o serviço estiver criado:
+
+1. No Render, abra o serviço, acesse **Settings > Custom Domains** e adicione `burgeron.live` e `www.burgeron.live`.
+2. No painel do seu provedor de domínio, remova registros antigos que apontem para o GitHub Pages.
+3. Crie os registros DNS mostrados pelo Render. Normalmente:
+   - `@` (ou `burgeron.live`) aponta para o destino indicado pelo Render;
+   - `www` recebe um `CNAME` para o hostname indicado pelo Render.
+4. Aguarde a propagação e confirme no Render que o certificado HTTPS foi emitido.
+
+Os valores de DNS podem variar por conta e provedor; use os valores exibidos pelo Render, não um IP fixo encontrado em outro tutorial. O arquivo [`CNAME`](./CNAME) é usado pelo GitHub Pages e não configura o domínio no Render.
+
+## 🚀 Como Publicar no GitHub Pages (Alternativa)
 
 1. Crie um repositório no GitHub (exemplo: `cardapio-burguer-on`).
 2. Faça o upload de todos os arquivos desta pasta para o repositório.
